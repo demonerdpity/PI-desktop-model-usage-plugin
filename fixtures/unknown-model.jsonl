@@ -1,0 +1,2 @@
+{"type":"message","id":"unknown-1","role":"assistant","createdAt":"2026-01-04T10:00:00.000Z","meta":{"providerId":"relay.example","modelId":"custom-private-model","usage":{"input":10,"output":5,"total":15}}}
+{"type":"message","id":"bad-negative","role":"assistant","createdAt":"2026-01-04T10:01:00.000Z","meta":{"providerId":"openai","modelId":"gpt-4o","usage":{"input":-1,"output":2}}}

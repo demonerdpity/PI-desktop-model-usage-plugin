@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data:; font-src 'self' file:; connect-src 'none'; form-action 'none'; base-uri 'none'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="pi-plugin-chrome" content="v3" />
+  <title>Model Usage Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="boot.js"></script>
+</head>
+<body>
+  <header class="titlebar" id="titlebar">
+    <div class="titlebar-title" id="appTitle"></div>
+    <div class="titlebar-actions" aria-label="Panel actions">
+      <button class="icon-button" id="appearanceButton" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Appearance">◐</button>
+      <button class="icon-button" id="reloadButton" type="button" aria-label="Reload latest data">↻</button>
+    </div>
+    <div class="appearance-menu" id="appearanceMenu" hidden role="dialog" aria-label="Appearance">
+      <div class="menu-label" id="themeLabel"></div>
+      <div class="menu-actions" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="auto" id="themeAuto"></button>
+        <button type="button" data-theme-choice="light" id="themeLight"></button>
+        <button type="button" data-theme-choice="dark" id="themeDark"></button>
+      </div>
+      <div class="menu-label" id="languageLabel"></div>
+      <div class="menu-actions" role="group" aria-label="Language">
+        <button type="button" data-locale-choice="auto" id="localeAuto"></button>
+        <button type="button" data-locale-choice="en" id="localeEnglish">English</button>
+        <button type="button" data-locale-choice="zh" id="localeChinese">中文</button>
+      </div>
+      <p class="menu-note" id="appearanceNote"></p>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="range-group" id="rangeGroup" role="group" aria-label="Time range">
+      <button type="button" data-range="7" id="range7"></button>
+      <button type="button" data-range="30" id="range30"></button>
+      <button type="button" data-range="90" id="range90"></button>
+    </div>
+    <div class="toolbar-status" id="toolbarStatus" role="status" aria-live="polite"></div>
+    <div class="scan-progress" id="scanProgress" role="progressbar" aria-label="Scan progress" aria-valuemin="0" aria-valuemax="100" hidden><span id="scanProgressFill"></span></div>
+  </div>
+
+  <main class="scroller" id="scroller">
+    <div class="state" id="state" hidden>
+      <h1 id="stateTitle"></h1>
+      <p id="stateBody"></p>
+    </div>
+
+    <div id="dashboard" hidden>
+      <section class="summary-grid" aria-label="Summary metrics">
+        <article class="metric-card">
+          <div class="metric-label" id="requestsLabel"></div>
+          <div class="metric-value" id="requestsValue">—</div>
+          <div class="metric-note" id="requestsNote"></div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-label" id="tokensLabel"></div>
+          <div class="metric-value" id="tokensValue">—</div>
+          <div class="metric-note" id="tokensNote"></div>
+        </article>
+        <article class="metric-card" id="inputCard">
+          <div class="metric-label" id="inputLabel"></div>
+          <div class="metric-value" id="inputValue">—</div>
+          <div class="metric-note" id="inputNote"></div>
+        </article>
+        <article class="metric-card" id="outputCard">
+          <div class="metric-label" id="outputLabel"></div>
+          <div class="metric-value" id="outputValue">—</div>
+          <div class="metric-note" id="outputNote"></div>
+        </article>
+        <article class="metric-card" id="cacheCard">
+          <div class="metric-label" id="cacheLabel"></div>
+          <div class="metric-value" id="cacheValue">—</div>
+          <div class="metric-note" id="cacheNote"></div>
+        </article>
+        <article class="metric-card" id="reasoningCard">
+          <div class="metric-label" id="reasoningLabel"></div>
+          <div class="metric-value" id="reasoningValue">—</div>
+          <div class="metric-note" id="reasoningNote"></div>
+        </article>
+        <article class="metric-card" id="costCard" hidden>
+          <div class="metric-label" id="costLabel"></div>
+          <div class="metric-value" id="costValue">—</div>
+          <div class="metric-note" id="costNote"></div>
+        </article>
+      </section>
+
+      <section class="panel-card trend-card">
+        <div class="section-heading">
+          <div>
+            <h2 id="trendTitle"></h2>
+            <p id="trendSubtitle"></p>
+          </div>
+          <div class="trend-switch" role="group" aria-label="Trend metric">
+            <button type="button" class="selected" data-trend="tokens" id="trendTokens"></button>
+            <button type="button" data-trend="requests" id="trendRequests"></button>
+            <button type="button" data-trend="cost" id="trendCost"></button>
+          </div>
+        </div>
+        <div class="chart-wrap" id="chartWrap">
+          <svg id="trendChart" viewBox="0 0 900 220" role="img" aria-labelledby="trendTitle trendSubtitle"></svg>
+        </div>
+        <table class="sr-table" id="trendTable"><caption id="trendTableCaption"></caption><thead><tr><th>Date</th><th>Requests</th><th>Tokens</th><th>Cost</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <section class="panel-card">
+        <div class="section-heading"><div><h2 id="providersTitle"></h2><p id="providersSubtitle"></p></div></div>
+        <div class="table-scroll">
+          <table class="data-table"><thead><tr><th id="providerNameHead"></th><th id="providerRequestsHead"></th><th id="providerTokensHead"></th><th id="providerModelsHead"></th><th id="providerCostHead" class="cost-column"></th><th id="providerQuotaHead" class="quota-column" hidden></th></tr></thead><tbody id="providersBody"></tbody></table>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <div class="section-heading"><div><h2 id="modelsTitle"></h2><p id="modelsSubtitle"></p></div></div>
+        <div class="table-scroll">
+          <table class="data-table"><thead><tr><th id="modelNameHead"></th><th id="modelProviderHead"></th><th id="modelRequestsHead"></th><th id="modelTokensHead"></th><th id="modelCostHead" class="cost-column"></th></tr></thead><tbody id="modelsBody"></tbody></table>
+        </div>
+      </section>
+
+      <details class="panel-card provenance-card" id="provenanceDetails">
+        <summary id="provenanceSummary"></summary>
+        <div class="provenance-grid" id="provenanceGrid"></div>
+      </details>
+    </div>
+  </main>
+  <script src="../lib/aggregate.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
