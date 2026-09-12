@@ -1,8 +1,8 @@
 {
   "name": "pi-model-usage-dashboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Local-first PI-Desktop model usage dashboard plugin",
+  "description": "Channel-first quota and local model usage dashboard for PI-Desktop",
   "main": "main.js",
   "scripts": {
     "test": "node --test test/*.test.js"

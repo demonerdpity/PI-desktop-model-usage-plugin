@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Replaced the token/trend-led dashboard with compact provider and account cards centered on verified quota windows.
+- Added a normalized multi-window quota contract with account, plan, used/remaining percentage, and reset metadata.
+- Added a credential-free parser for Cockpit Tools-compatible Codex `wham/usage` responses, while refusing Cockpit's synthetic 100% fallback for missing windows.
+- Kept local requests, tokens, and API-equivalent costs as secondary card metadata; unsupported quota sources remain explicitly unavailable.
+- Documented why the current PI-Desktop plugin API cannot safely fetch authenticated Codex quota data without a host-owned credential broker.
+- Fixed asynchronous changed-file scans so removed session records cannot survive in derived usage totals.
+
 ## 0.1.0
 
 - Added the `pi.model-usage-dashboard` PI-Desktop plugin and `modelUsageDashboard.open` command.

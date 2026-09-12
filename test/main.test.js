@@ -45,6 +45,9 @@ test("startup warms without opening; command opens before shared refresh", async
     main.__test.setSessionRoot(sessions);
     await main.onLoad();
     await waitFor(() => Boolean(main.__test.getState().currentSnapshot));
+    const startupSnapshot = main.__test.getState().currentSnapshot;
+    assert.equal(startupSnapshot.capabilities.quota, false);
+    assert.equal(startupSnapshot.providers.every((provider) => provider.quotaAvailable === false && provider.quotaWindows.length === 0), true);
     assert.equal(calls.some((entry) => entry[0] === "open"), false);
     calls.length = 0;
     await registered.run();

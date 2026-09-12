@@ -1,38 +1,168 @@
 "use strict";
 
 (function () {
-  const bridge = window.pluginBridge;
-  const boot = window.__modelUsageBoot || { cached: null, apply() {}, prefersLight: () => false, themeTrail: [] };
-  const SVG_NS = "http://www.w3.org/2000/svg";
+  const rootWindow = typeof window !== "undefined" ? window : {};
+  const boot = rootWindow.__modelUsageBoot || { cached: null, prefersLight: () => false, themeTrail: [] };
   const POLL_VISIBLE_MS = 1500;
   const POLL_HIDDEN_MS = 6000;
   const STORAGE_KEY = "modelUsageDashboard.preferences.v1";
   const strings = {
     en: {
-      title: "Model Usage Dashboard", appearance: "Appearance", theme: "Theme", language: "Language", followApp: "Follow app", light: "Light", dark: "Dark", following: "Following PI-Desktop", reload: "Reload latest data", range7: "7D", range30: "30D", range90: "90D", scanning: (done, total) => total ? `Scanning ${done} of ${total} files…` : "Scanning local sessions…", stale: "Showing last good data · stale", failed: "Refresh failed · showing last good data", ready: "Up to date", idle: "Waiting for first scan", emptyTitle: "No usage records yet", emptyBody: "This panel reads assistant meta.usage from PI-Desktop local sessions. Run a conversation, then run the open command again.", errorTitle: "Dashboard unavailable", errorBody: "The panel could not read its private plugin settings.", requests: "Requests", tokens: "Total tokens", input: "Input", output: "Output", cost: "API-equivalent estimate", estimate: (coverage) => `Official exact-price coverage ${coverage}%`, trend: "Usage trend", trendSub: (days) => `Local calendar days · last ${days} days`, trendTokens: "Tokens", trendRequests: "Requests", trendCost: "Cost", providers: "Providers", providersSub: (count) => `${count} provider channels · kept separate by provider id`, models: "Models", modelsSub: (count) => `${count} exact model ids in the recorded history`, provider: "Provider", model: "Model", requestsShort: "Requests", tokensShort: "Tokens", modelsShort: "Models", costShort: "Estimate", quotaShort: "Quota", providerUnknown: "No records", current: "Enabled", noCost: "Not available", provenance: "Data sources and limits", usageSource: "Usage source", costSource: "Cost source", quotaSource: "Quota / reset", localUsage: "PI-Desktop assistant meta.usage · local only", priceEstimate: "Versioned official API price snapshot · estimate only", quotaHidden: "Hidden: the current public host API provides no safe quota, balance, or reset data.", refreshed: (date) => `Updated ${date}`, coverage: (value) => `${Math.round(value * 100)}% coverage`, unknown: "Unknown", date: (value) => new Date(value + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      title: "Model Usage Dashboard",
+      appearance: "Appearance",
+      theme: "Theme",
+      language: "Language",
+      followApp: "Follow app",
+      light: "Light",
+      dark: "Dark",
+      following: "Following PI-Desktop",
+      reload: "Reload latest data",
+      scanning: (done, total) => total ? `Scanning ${done} of ${total} files…` : "Scanning local sessions…",
+      stale: "Showing last good data · stale",
+      failed: "Refresh failed · showing last good data",
+      ready: "Up to date",
+      idle: "Waiting for first scan",
+      emptyTitle: "No usage records yet",
+      emptyBody: "This panel reads assistant meta.usage from PI-Desktop local sessions. Run a conversation, then run the open command again.",
+      errorTitle: "Dashboard unavailable",
+      errorBody: "The panel could not read its private plugin settings.",
+      channels: "Channels",
+      channelsSub: (count) => `${count} channel${count === 1 ? "" : "s"} · quota windows from the provider adapter`,
+      account: "Account",
+      plan: "Plan",
+      quota: "Quota",
+      quotaWindow: "Quota window",
+      quotaUnavailable: "Quota unavailable",
+      noPercent: "Percentage unavailable",
+      remaining: "remaining",
+      used: "used",
+      resetAt: "Reset at",
+      resetAfter: "Reset in",
+      requests: "Requests",
+      tokens: "Tokens",
+      estimate: "Estimate",
+      noChannels: "No channels in this snapshot",
+      unknown: "Unknown",
+      partial: (count) => `Up to date · ${count} damaged lines skipped`
     },
     zh: {
-      title: "模型用量仪表盘", appearance: "外观", theme: "主题", language: "语言", followApp: "跟随应用", light: "浅色", dark: "深色", following: "跟随 PI-Desktop", reload: "刷新最新快照", range7: "7天", range30: "30天", range90: "90天", scanning: (done, total) => total ? `正在扫描 ${done} / ${total} 个文件…` : "正在扫描本地会话…", stale: "显示上次成功数据 · 已过期", failed: "刷新失败 · 保留上次成功数据", ready: "数据已更新", idle: "等待首次扫描", emptyTitle: "暂无用量记录", emptyBody: "本面板只读取 PI-Desktop 本地会话中的 assistant meta.usage。运行一次对话后，再次执行打开命令。", errorTitle: "无法读取仪表盘", errorBody: "面板无法读取插件私有设置。", requests: "请求数", tokens: "总 Token", input: "输入", output: "输出", cost: "API 等价估算", estimate: (coverage) => `官方精确价格覆盖 ${coverage}%`, trend: "用量趋势", trendSub: (days) => `本地日历日 · 最近 ${days} 天`, trendTokens: "Token", trendRequests: "请求", trendCost: "费用", providers: "提供商", providersSub: (count) => `${count} 个渠道 · 按 provider id 独立统计`, models: "模型", modelsSub: (count) => `历史中 ${count} 个精确模型 id`, provider: "提供商", model: "模型", requestsShort: "请求", tokensShort: "Token", modelsShort: "模型数", costShort: "估算", quotaShort: "额度", providerUnknown: "尚无记录", current: "已启用", noCost: "不可用", provenance: "数据来源与限制", usageSource: "用量来源", costSource: "费用来源", quotaSource: "额度 / 重置", localUsage: "PI-Desktop assistant meta.usage · 仅本地", priceEstimate: "版本化官方 API 价格快照 · 仅为估算", quotaHidden: "隐藏：当前公开宿主 API 未向插件提供安全的额度、余额或重置数据。", refreshed: (date) => `${date} 更新`, coverage: (value) => `覆盖 ${Math.round(value * 100)}%`, unknown: "未知", date: (value) => new Date(value + "T12:00:00").toLocaleDateString("zh-CN", { month: "short", day: "numeric" })
+      title: "模型用量仪表盘",
+      appearance: "外观",
+      theme: "主题",
+      language: "语言",
+      followApp: "跟随应用",
+      light: "浅色",
+      dark: "深色",
+      following: "跟随 PI-Desktop",
+      reload: "刷新最新快照",
+      scanning: (done, total) => total ? `正在扫描 ${done} / ${total} 个文件…` : "正在扫描本地会话…",
+      stale: "显示上次成功数据 · 已过期",
+      failed: "刷新失败 · 保留上次成功数据",
+      ready: "数据已更新",
+      idle: "等待首次扫描",
+      emptyTitle: "暂无用量记录",
+      emptyBody: "本面板只读取 PI-Desktop 本地会话中的 assistant meta.usage。运行一次对话后，再次执行打开命令。",
+      errorTitle: "无法读取仪表盘",
+      errorBody: "面板无法读取插件私有设置。",
+      channels: "渠道",
+      channelsSub: (count) => `${count} 个渠道 · 额度窗口由渠道适配器提供`,
+      account: "账号",
+      plan: "计划",
+      quota: "额度",
+      quotaWindow: "额度窗口",
+      quotaUnavailable: "额度接口不可用",
+      noPercent: "百分比不可用",
+      remaining: "剩余",
+      used: "已用",
+      resetAt: "重置时间",
+      resetAfter: "重置倒计时",
+      requests: "请求",
+      tokens: "Token",
+      estimate: "估算费用",
+      noChannels: "此快照没有渠道",
+      unknown: "未知",
+      partial: (count) => `数据已更新 · 已跳过 ${count} 条损坏记录`
     }
   };
-  Object.assign(strings.en, { cache: "Cache read / write", reasoning: "Reasoning", refreshFailed: "Refresh failed", partial: (count) => `Up to date · ${count} damaged lines skipped` });
-  Object.assign(strings.zh, { cache: "缓存读取 / 写入", reasoning: "推理", refreshFailed: "刷新失败", partial: (count) => `数据已更新 · 已跳过 ${count} 条损坏记录` });
 
   const state = {
-    locale: "en", appearance: null, snapshot: null, scan: null, range: 30, trend: "tokens", preferences: { theme: "auto", locale: "auto" }, status: "loading", menu: false, timer: null, lastKey: ""
+    locale: "en",
+    appearance: null,
+    snapshot: null,
+    scan: null,
+    range: 30,
+    preferences: { theme: "auto", locale: "auto" },
+    status: "loading",
+    menu: false,
+    timer: null,
+    lastKey: ""
   };
 
   function $(id) { return document.getElementById(id); }
-  function text(id, value) { const node = $(id); if (node) node.textContent = value == null ? "" : String(value); }
+  function text(id, value) {
+    const node = $(id);
+    if (node) node.textContent = value == null ? "" : String(value);
+  }
   function clear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
-  function safeNumber(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0; }
-  function fmt(value) { return Math.round(safeNumber(value)).toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US"); }
-  function fmtCost(value) { return safeNumber(value).toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 }); }
-  function t(key, ...args) { const value = strings[state.locale][key]; return typeof value === "function" ? value(...args) : value; }
-  function readPreferences() { try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); return value && typeof value === "object" ? { theme: value.theme || "auto", locale: value.locale || "auto" } : { theme: "auto", locale: "auto" }; } catch (_) { return { theme: "auto", locale: "auto" }; } }
-  function savePreferences() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.preferences)); } catch (_) {} }
-  function hostLocale() { return String(state.appearance?.locale || "en").toLowerCase().indexOf("zh") === 0 ? "zh" : "en"; }
-  function resolvedLocale() { return state.preferences.locale === "auto" ? hostLocale() : state.preferences.locale === "zh" ? "zh" : "en"; }
+  function isObject(value) { return Boolean(value && typeof value === "object" && !Array.isArray(value)); }
+  function hasOwn(value, key) { return isObject(value) && Object.prototype.hasOwnProperty.call(value, key); }
+  function numberValue(value) {
+    if (value === null || value === undefined || value === "" || typeof value === "boolean") return null;
+    const parsed = typeof value === "number" ? value : Number(String(value).trim());
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  }
+  function safeNumber(value) { return numberValue(value) || 0; }
+  function stringValue(value) {
+    if (typeof value === "string") return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    return "";
+  }
+  function displayValue(value) {
+    const direct = stringValue(value);
+    if (direct) return direct;
+    if (!isObject(value)) return "";
+    for (const key of ["label", "name"]) {
+      const nested = stringValue(value[key]);
+      if (nested) return nested;
+    }
+    return "";
+  }
+  function fmt(value) {
+    const parsed = numberValue(value);
+    return parsed === null ? "" : Math.round(parsed).toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US");
+  }
+  function fmtCost(value, currency = "USD") {
+    const parsed = numberValue(value);
+    if (parsed === null) return "";
+    try {
+      return parsed.toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US", { style: "currency", currency: String(currency || "USD"), maximumFractionDigits: 4 });
+    } catch (_) {
+      return parsed.toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 });
+    }
+  }
+  function t(key, ...args) {
+    const value = strings[state.locale][key];
+    return typeof value === "function" ? value(...args) : value;
+  }
+  function readPreferences() {
+    try {
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      return value && typeof value === "object"
+        ? { theme: value.theme || "auto", locale: value.locale || "auto" }
+        : { theme: "auto", locale: "auto" };
+    } catch (_) {
+      return { theme: "auto", locale: "auto" };
+    }
+  }
+  function savePreferences() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.preferences)); } catch (_) {}
+  }
+  function hostLocale() {
+    return String(state.appearance?.locale || "en").toLowerCase().indexOf("zh") === 0 ? "zh" : "en";
+  }
+  function resolvedLocale() {
+    return state.preferences.locale === "auto" ? hostLocale() : state.preferences.locale === "zh" ? "zh" : "en";
+  }
   function resolvedTheme() {
     if (state.preferences.theme === "light" || state.preferences.theme === "dark") return state.preferences.theme;
     if (state.appearance?.base === "light" || state.appearance?.base === "dark") return state.appearance.base;
@@ -44,20 +174,47 @@
     document.documentElement.dataset.theme = base;
     document.documentElement.dataset.lang = state.locale;
     document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
-    const pluginCss = state.preferences.theme === "auto" ? state.appearance?.pluginTheme?.css : null;
+    const pluginCss = state.preferences.theme === "auto" && typeof state.appearance?.pluginTheme?.css === "string"
+      ? state.appearance.pluginTheme.css
+      : "";
     let style = $("pluginThemeCss");
     if (pluginCss) {
-      if (!style) { style = document.createElement("style"); style.id = "pluginThemeCss"; document.head.appendChild(style); }
+      if (!style) {
+        style = document.createElement("style");
+        style.id = "pluginThemeCss";
+        document.head.appendChild(style);
+      }
       style.textContent = pluginCss.slice(0, 262144);
     } else if (style) style.remove();
     try { localStorage.setItem(boot.cacheKey || "modelUsageDashboard.appearance.v1", JSON.stringify({ base, locale: state.locale })); } catch (_) {}
-    if (boot.themeTrail) boot.themeTrail.push(base);
+    if (Array.isArray(boot.themeTrail)) boot.themeTrail.push(base);
   }
-  function setSelected(selector, value, dataName) { document.querySelectorAll(selector).forEach((node) => { const selected = node.dataset[dataName] === String(value); node.classList.toggle("selected", selected); node.setAttribute("aria-pressed", String(selected)); }); }
-  function settingsKey(settings) { return JSON.stringify([settings?.dashboardSnapshot?.generatedAt || 0, settings?.scanState?.status || "", settings?.scanState?.finishedAt || 0, settings?.hostAppearance?.base || "", settings?.hostAppearance?.locale || ""]); }
+  function setSelected(selector, value, dataName) {
+    document.querySelectorAll(selector).forEach((node) => {
+      const selected = node.dataset[dataName] === String(value);
+      node.classList.toggle("selected", selected);
+      node.setAttribute("aria-pressed", String(selected));
+    });
+  }
+  function settingsKey(settings) {
+    const snapshot = settings?.dashboardSnapshot || {};
+    return JSON.stringify([
+      snapshot.generatedAt || 0,
+      snapshot.asOf || 0,
+      settings?.scanState?.status || "",
+      settings?.scanState?.finishedAt || 0,
+      settings?.hostAppearance?.base || "",
+      settings?.hostAppearance?.locale || ""
+    ]);
+  }
 
   async function readSettings(force) {
-    if (!bridge || typeof bridge.invoke !== "function") { state.status = "error"; render(); return; }
+    const bridge = rootWindow.pluginBridge;
+    if (!bridge || typeof bridge.invoke !== "function") {
+      state.status = "error";
+      render();
+      return;
+    }
     try {
       const settings = await bridge.invoke("plugin.getSettings");
       const key = settingsKey(settings);
@@ -66,7 +223,10 @@
       state.snapshot = settings?.dashboardSnapshot || null;
       state.status = "ok";
       applyAppearance();
-      if (force || key !== state.lastKey) { state.lastKey = key; render(); }
+      if (force || key !== state.lastKey) {
+        state.lastKey = key;
+        render();
+      }
     } catch (_) {
       state.status = "error";
       render();
@@ -75,133 +235,342 @@
 
   function renderStatic() {
     text("appTitle", t("title"));
-    text("themeLabel", t("theme")); text("languageLabel", t("language"));
-    text("themeAuto", t("followApp")); text("themeLight", t("light")); text("themeDark", t("dark")); text("localeAuto", t("followApp"));
+    text("themeLabel", t("theme"));
+    text("languageLabel", t("language"));
+    text("themeAuto", t("followApp"));
+    text("themeLight", t("light"));
+    text("themeDark", t("dark"));
+    text("localeAuto", t("followApp"));
     text("reloadButton", "↻");
-    $("reloadButton").setAttribute("aria-label", t("reload")); $("appearanceButton").setAttribute("aria-label", t("appearance"));
-    text("range7", t("range7")); text("range30", t("range30")); text("range90", t("range90"));
-    text("requestsLabel", t("requests")); text("tokensLabel", t("tokens")); text("inputLabel", t("input")); text("outputLabel", t("output")); text("cacheLabel", t("cache")); text("reasoningLabel", t("reasoning")); text("costLabel", t("cost"));
-    text("trendTitle", t("trend")); text("trendTokens", t("trendTokens")); text("trendRequests", t("trendRequests")); text("trendCost", t("trendCost"));
-    text("providersTitle", t("providers")); text("modelsTitle", t("models"));
-    text("providerNameHead", t("provider")); text("providerRequestsHead", t("requestsShort")); text("providerTokensHead", t("tokensShort")); text("providerModelsHead", t("modelsShort")); text("providerCostHead", t("costShort")); text("providerQuotaHead", t("quotaShort"));
-    text("modelNameHead", t("model")); text("modelProviderHead", t("provider")); text("modelRequestsHead", t("requestsShort")); text("modelTokensHead", t("tokensShort")); text("modelCostHead", t("costShort"));
-    text("provenanceSummary", t("provenance"));
-    setSelected("[data-range]", state.range, "range"); setSelected("[data-trend]", state.trend, "trend");
-    setSelected("[data-theme-choice]", state.preferences.theme, "themeChoice"); setSelected("[data-locale-choice]", state.preferences.locale, "localeChoice");
+    if ($("reloadButton")) $("reloadButton").setAttribute("aria-label", t("reload"));
+    if ($("appearanceButton")) $("appearanceButton").setAttribute("aria-label", t("appearance"));
+    text("channelsTitle", t("channels"));
+    text("channelsSubtitle", "");
+    setSelected("[data-theme-choice]", state.preferences.theme, "themeChoice");
+    setSelected("[data-locale-choice]", state.preferences.locale, "localeChoice");
   }
 
   function renderToolbar() {
-    setSelected("[data-range]", state.range, "range");
     const scan = state.scan || {};
     const damaged = Math.max(safeNumber(scan.malformedLines), safeNumber(scan.truncatedLines)) + safeNumber(scan.filesSkipped);
     if (scan.status === "scanning") text("toolbarStatus", t("scanning", scan.filesScanned || 0, scan.filesTotal || 0));
-    else if (scan.status === "failed") text("toolbarStatus", scan.stale ? t("failed") : t("refreshFailed"));
+    else if (scan.status === "failed") text("toolbarStatus", scan.stale ? t("failed") : t("failed"));
     else if (scan.stale) text("toolbarStatus", t("stale"));
     else if (scan.status === "ready" && damaged) text("toolbarStatus", t("partial", damaged));
     else if (scan.status === "ready") text("toolbarStatus", t("ready"));
     else text("toolbarStatus", t("idle"));
     const progress = $("scanProgress");
-    const total = safeNumber(scan.filesTotal); const done = Math.min(total, safeNumber(scan.filesScanned));
+    if (!progress) return;
+    const total = safeNumber(scan.filesTotal);
+    const done = Math.min(total, safeNumber(scan.filesScanned));
     const percent = total ? Math.round((done / total) * 100) : 0;
-    progress.hidden = scan.status !== "scanning"; progress.setAttribute("aria-valuenow", String(percent)); $("scanProgressFill").style.width = `${percent}%`;
-    const costButton = $("trendCost");
-    const selectedCost = state.snapshot?.trends?.[String(state.range)]?.cost;
-    const costAvailable = Boolean(state.snapshot?.capabilities?.cost && selectedCost);
-    costButton.disabled = !costAvailable; costButton.setAttribute("aria-disabled", String(!costAvailable));
-    costButton.title = costAvailable ? t("cost") : t("noCost");
+    progress.hidden = scan.status !== "scanning";
+    progress.setAttribute("aria-valuenow", String(percent));
+    const fill = $("scanProgressFill");
+    if (fill) fill.style.width = `${percent}%`;
   }
 
+  function channelList(snapshot) {
+    const trend = snapshot?.trends?.[String(state.range)];
+    const base = Array.isArray(snapshot?.channels) ? snapshot.channels : Array.isArray(snapshot?.providers) ? snapshot.providers : null;
+    if (!base) return trend && Array.isArray(trend.providers) ? trend.providers : [];
+    if (!trend || !Array.isArray(trend.providers)) return base;
+    const byId = new Map(trend.providers.filter(isObject).map((provider) => [String(provider.id || ""), provider]));
+    const merged = base.map((channel) => {
+      const usage = byId.get(String(channel?.id || ""));
+      if (!usage) return channel;
+      return { ...channel, requests: usage.requests, tokens: usage.tokens, cost: usage.cost, costCoverage: usage.costCoverage, models: usage.models, modelCount: usage.modelCount, trend: usage.trend, lastActivityAt: usage.lastActivityAt };
+    });
+    const known = new Set(merged.map((channel) => String(channel?.id || "")));
+    trend.providers.forEach((provider) => { if (isObject(provider) && !known.has(String(provider.id || ""))) merged.push(provider); });
+    return merged;
+  }
+  function hasRenderableData(snapshot) {
+    if (!snapshot) return false;
+    return channelList(snapshot).some(isObject);
+  }
   function renderState() {
     const snapshot = state.snapshot;
-    const showState = state.status === "error" || !snapshot || !snapshot.hasData;
+    const showState = state.status === "error" || !hasRenderableData(snapshot);
     $("state").hidden = !showState;
     $("dashboard").hidden = showState;
     if (!showState) return;
-    if (state.status === "error") { text("stateTitle", t("errorTitle")); text("stateBody", t("errorBody")); return; }
-    text("stateTitle", t("emptyTitle")); text("stateBody", t("emptyBody"));
+    if (state.status === "error") {
+      text("stateTitle", t("errorTitle"));
+      text("stateBody", t("errorBody"));
+      return;
+    }
+    text("stateTitle", t("emptyTitle"));
+    text("stateBody", t("emptyBody"));
   }
 
-  function renderMetrics() {
-    const totals = state.snapshot?.trends?.[String(state.range)]?.totals || state.snapshot?.totals || {};
-    text("requestsValue", fmt(totals.requests)); text("tokensValue", fmt(totals.tokens)); text("inputValue", fmt(totals.input)); text("outputValue", fmt(totals.output)); text("cacheValue", `${fmt(totals.cacheRead)} / ${fmt(totals.cacheWrite)}`); text("reasoningValue", fmt(totals.reasoning));
-    text("requestsNote", state.snapshot?.provenance?.usage?.sourceType || t("localUsage"));
-    text("tokensNote", state.snapshot?.capabilities?.tokens ? t("localUsage") : t("noCost"));
-    const fields = totals.tokenCapabilities || {};
-    $("inputCard").hidden = fields.input === false; $("outputCard").hidden = fields.output === false;
-    $("cacheCard").hidden = !fields.cacheRead && !fields.cacheWrite; $("reasoningCard").hidden = !fields.reasoning;
-    text("inputNote", totals.input ? `${Math.round((totals.input / Math.max(1, totals.tokens)) * 100)}%` : "");
-    text("outputNote", totals.output ? `${Math.round((totals.output / Math.max(1, totals.tokens)) * 100)}%` : "");
-    text("cacheNote", fields.cacheRead || fields.cacheWrite ? t("localUsage") : ""); text("reasoningNote", fields.reasoning ? t("localUsage") : "");
-    // Only the selected window's cost may be rendered: falling back to the
-    // 30-day overview would print one window's amount next to another window's
-    // request and token totals.
-    const cost = state.snapshot?.trends?.[String(state.range)]?.cost || null;
-    const showCost = Boolean(state.snapshot?.capabilities?.cost && cost);
-    $("costCard").hidden = !showCost;
-    if (showCost) { text("costValue", fmtCost(cost.amount)); text("costNote", t("estimate", Math.round((cost.coverage || 0) * 100))); }
+  function firstArray(values) {
+    for (const value of values) if (Array.isArray(value)) return value;
+    return [];
+  }
+  function quotaData(channel, snapshot) {
+    const directQuota = isObject(channel?.quota) ? channel.quota : null;
+    const globalQuota = isObject(snapshot?.quota) ? snapshot.quota : isObject(snapshot?.provenance?.quota) ? snapshot.provenance.quota : null;
+    const windows = firstArray([
+      channel?.quotaWindows,
+      directQuota?.quotaWindows,
+      directQuota?.windows,
+      channel?.quota?.windows,
+      globalQuota?.quotaWindows,
+      globalQuota?.windows
+    ]).filter(isObject);
+    const explicitlyUnavailable = channel?.quota === false || directQuota?.available === false;
+    const explicitlyAvailable = directQuota?.available === true || channel?.quotaAvailable === true;
+    const globalUnavailable = !directQuota && !windows.length && globalQuota?.available === false;
+    return {
+      available: !explicitlyUnavailable && !globalUnavailable && (explicitlyAvailable || windows.length > 0) && windows.length > 0,
+      windows
+    };
+  }
+  function percentValue(value) {
+    if (value === null || value === undefined || value === "" || typeof value === "boolean") return null;
+    const raw = String(value).trim().replace(/%$/, "");
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : null;
+  }
+  function percentText(value) {
+    const parsed = Math.round(value * 100) / 100;
+    return parsed.toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 2 }) + "%";
+  }
+  function quotaPercent(window) {
+    const remaining = percentValue(window.remainingPercent);
+    if (remaining !== null) return { value: remaining, kind: "remaining" };
+    const used = percentValue(window.usedPercent);
+    if (used !== null) return { value: used, kind: "used" };
+    return null;
+  }
+  function resetAtText(value) {
+    if (value === null || value === undefined || value === "") return "";
+    const raw = stringValue(value);
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return raw;
+    return date.toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  function resetAfterText(value) {
+    if (value === null || value === undefined || value === "") return "";
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      let seconds = Math.round(value);
+      const days = Math.floor(seconds / 86400);
+      seconds %= 86400;
+      const hours = Math.floor(seconds / 3600);
+      seconds %= 3600;
+      const minutes = Math.floor(seconds / 60);
+      seconds %= 60;
+      const parts = [];
+      if (days) parts.push(`${days}d`);
+      if (hours) parts.push(`${hours}h`);
+      if (minutes) parts.push(`${minutes}m`);
+      if (!parts.length) parts.push(`${seconds}s`);
+      return parts.join(" ");
+    }
+    if (isObject(value)) return displayValue(value) || "";
+    return stringValue(value);
+  }
+  function fieldValue(channel, quota, keys) {
+    for (const source of [channel, quota]) {
+      if (!isObject(source)) continue;
+      for (const key of keys) {
+        if (!hasOwn(source, key)) continue;
+        const value = displayValue(source[key]);
+        if (value) return value;
+      }
+    }
+    return "";
+  }
+  function channelName(channel) {
+    const provider = isObject(channel?.provider) ? channel.provider : null;
+    return displayValue(channel?.label) || displayValue(channel?.name) || displayValue(channel?.channel) || displayValue(provider?.label) || displayValue(provider?.name) || displayValue(channel?.id) || displayValue(provider?.id) || t("unknown");
+  }
+  function metricValue(channel, keys) {
+    const sources = [channel, channel?.usage, channel?.metrics];
+    for (const source of sources) {
+      if (!isObject(source)) continue;
+      for (const key of keys) {
+        if (!hasOwn(source, key)) continue;
+        const raw = source[key];
+        const direct = numberValue(raw);
+        if (direct !== null) return direct;
+        if (key === "tokens" && isObject(raw)) {
+          const total = numberValue(raw.total);
+          if (total !== null) return total;
+        }
+      }
+    }
+    return null;
+  }
+  function costValue(channel) {
+    if (channel?.capabilities?.cost === false) return null;
+    const sources = [channel, channel?.usage, channel?.metrics];
+    for (const source of sources) {
+      if (!isObject(source)) continue;
+      for (const key of ["cost", "estimate", "costEstimate"]) {
+        if (!hasOwn(source, key)) continue;
+        const raw = source[key];
+        const amount = isObject(raw) ? raw.amount : raw;
+        const value = numberValue(amount);
+        if (value !== null) return { amount: value, currency: isObject(raw) ? raw.currency : "USD" };
+      }
+    }
+    return null;
+  }
+  function makeElement(name, className, value) {
+    const node = document.createElement(name);
+    if (className) node.className = className;
+    if (value !== undefined) node.textContent = value;
+    return node;
+  }
+  function appendDetail(parent, label, value) {
+    const item = makeElement("span", "channel-detail");
+    item.appendChild(makeElement("span", "detail-label", label));
+    item.appendChild(makeElement("span", "detail-value", value));
+    parent.appendChild(item);
+  }
+  function renderQuotaWindow(window, index) {
+    const item = makeElement("div", "quota-window");
+    const top = makeElement("div", "quota-window-top");
+    const label = displayValue(window.label) || displayValue(window.name) || displayValue(window.id) || `${t("quotaWindow")} ${index + 1}`;
+    top.appendChild(makeElement("span", "quota-label", label));
+    const percent = quotaPercent(window);
+    top.appendChild(makeElement("span", percent ? "quota-percent" : "quota-percent missing", percent ? `${percentText(percent.value)} ${t(percent.kind)}` : t("noPercent")));
+    item.appendChild(top);
+
+    const progress = makeElement("div", percent ? "quota-progress" : "quota-progress is-empty");
+    progress.setAttribute("role", "progressbar");
+    progress.setAttribute("aria-valuemin", "0");
+    progress.setAttribute("aria-valuemax", "100");
+    progress.setAttribute("aria-label", label);
+    if (percent) {
+      progress.setAttribute("aria-valuenow", String(percent.value));
+      const fill = makeElement("span", percent.kind === "remaining" ? "quota-progress-fill remaining" : "quota-progress-fill used");
+      fill.style.width = `${percent.value}%`;
+      progress.appendChild(fill);
+    } else {
+      progress.setAttribute("aria-valuetext", t("noPercent"));
+    }
+    item.appendChild(progress);
+
+    const reset = makeElement("div", "quota-reset");
+    if (hasOwn(window, "resetAt")) {
+      const value = resetAtText(window.resetAt);
+      if (value) appendDetail(reset, t("resetAt"), value);
+    }
+    const resetAfter = hasOwn(window, "resetAfterSeconds") ? window.resetAfterSeconds : window.resetAfter;
+    if (resetAfter !== undefined && resetAfter !== null) {
+      const value = resetAfterText(resetAfter);
+      if (value) appendDetail(reset, t("resetAfter"), value);
+    }
+    if (reset.childNodes.length) item.appendChild(reset);
+    return item;
+  }
+  function renderChannel(channel, snapshot) {
+    const article = makeElement("article", "channel-card");
+    const quota = isObject(channel?.quota) ? channel.quota : null;
+    const header = makeElement("header", "channel-header");
+    const heading = makeElement("div", "channel-heading");
+    const name = channelName(channel);
+    const title = makeElement("h2", "channel-name", name);
+    title.title = name;
+    heading.appendChild(title);
+    const id = displayValue(channel?.id);
+    if (id && id !== name) heading.appendChild(makeElement("div", "channel-id", id));
+    header.appendChild(heading);
+    article.appendChild(header);
+
+    const metadata = makeElement("div", "channel-metadata");
+    const account = fieldValue(channel, quota, ["accountLabel", "accountName"]);
+    const plan = fieldValue(channel, quota, ["plan", "planName", "subscription", "tier"]);
+    if (account) appendDetail(metadata, t("account"), account);
+    if (plan) appendDetail(metadata, t("plan"), plan);
+    if (metadata.childNodes.length) article.appendChild(metadata);
+
+    const quotaBlock = makeElement("section", "quota-block");
+    quotaBlock.appendChild(makeElement("div", "quota-heading", t("quota")));
+    const quotaInfo = quotaData(channel, snapshot);
+    if (!quotaInfo.available) {
+      quotaBlock.appendChild(makeElement("div", "quota-unavailable", t("quotaUnavailable")));
+    } else {
+      quotaInfo.windows.forEach((window, index) => quotaBlock.appendChild(renderQuotaWindow(window, index)));
+    }
+    article.appendChild(quotaBlock);
+
+    const requests = channel?.capabilities?.requests === false ? null : metricValue(channel, ["requests", "requestCount"]);
+    const tokens = channel?.capabilities?.tokens === false ? null : metricValue(channel, ["tokens", "totalTokens", "tokenCount"]);
+    const cost = channel?.capabilities?.cost === false ? null : costValue(channel);
+    if (requests !== null || tokens !== null || cost) {
+      const footer = makeElement("footer", "channel-footer");
+      if (tokens !== null) appendDetail(footer, t("tokens"), fmt(tokens));
+      if (requests !== null) appendDetail(footer, t("requests"), fmt(requests));
+      if (cost) appendDetail(footer, t("estimate"), fmtCost(cost.amount, cost.currency));
+      article.appendChild(footer);
+    }
+    return article;
+  }
+  function renderChannels() {
+    const list = $("channelList");
+    if (!list) return;
+    clear(list);
+    const channels = channelList(state.snapshot).filter(isObject);
+    text("channelsSubtitle", t("channelsSub", channels.length));
+    if (!channels.length) {
+      list.appendChild(makeElement("div", "channels-empty", t("noChannels")));
+      return;
+    }
+    channels.forEach((channel) => list.appendChild(renderChannel(channel, state.snapshot)));
   }
 
-  function svgElement(name, attrs) { const node = document.createElementNS(SVG_NS, name); Object.entries(attrs || {}).forEach(([key, value]) => node.setAttribute(key, String(value))); return node; }
-  function renderChart() {
-    const chart = $("trendChart"); clear(chart);
-    const trend = state.snapshot?.trends?.[String(state.range)]; const rows = trend?.days || [];
-    // A cost trend is only real when this window actually priced tokens;
-    // plotting it otherwise would draw a fabricated zero-cost line.
-    if (state.trend === "cost" && !(state.snapshot?.capabilities?.cost && trend?.cost)) state.trend = "tokens";
-    const metric = state.trend; const values = rows.map((row) => metric === "cost" ? safeNumber(row.cost) : safeNumber(row[metric]));
-    const width = 900; const height = 220; const pad = { left: 8, right: 8, top: 18, bottom: 27 }; const max = Math.max(1, ...values); const step = rows.length > 1 ? (width - pad.left - pad.right) / (rows.length - 1) : width;
-    for (let i = 0; i < 4; i += 1) { const y = pad.top + ((height - pad.top - pad.bottom) * i) / 3; chart.appendChild(svgElement("line", { x1: pad.left, x2: width - pad.right, y1: y, y2: y, class: "chart-grid" })); }
-    if (!rows.length) return;
-    const points = values.map((value, index) => `${pad.left + index * step},${height - pad.bottom - (value / max) * (height - pad.top - pad.bottom)}`);
-    chart.appendChild(svgElement("path", { d: `M ${pad.left},${height - pad.bottom} L ${points.join(" L ")} L ${width - pad.right},${height - pad.bottom} Z`, class: "chart-area" }));
-    chart.appendChild(svgElement("polyline", { points: points.join(" "), class: "chart-line" }));
-    if (rows.length <= 31) points.forEach((point, index) => { const [cx, cy] = point.split(","); const dot = svgElement("circle", { cx, cy, r: 3.2, class: "chart-dot" }); dot.setAttribute("aria-label", `${rows[index].date}: ${metric === "cost" ? fmtCost(values[index]) : fmt(values[index])}`); chart.appendChild(dot); });
-    const labelIndices = rows.length > 1 ? [0, Math.floor((rows.length - 1) / 2), rows.length - 1] : [0];
-    for (const index of labelIndices) { const label = svgElement("text", { x: pad.left + index * step, y: height - 6, class: "chart-label", "text-anchor": index === 0 ? "start" : index === rows.length - 1 ? "end" : "middle" }); label.textContent = t("date", rows[index].date); chart.appendChild(label); }
-    const tableBody = $("trendTable").querySelector("tbody"); clear(tableBody); rows.forEach((row) => { const tr = document.createElement("tr"); [row.date, fmt(row.requests), fmt(row.tokens), row.cost == null ? t("noCost") : fmtCost(row.cost)].forEach((value) => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); }); tableBody.appendChild(tr); });
-    text("trendTableCaption", `${t("trend")} ${t("trendSub", state.range)}`); text("trendSubtitle", t("trendSub", state.range));
-    setSelected("[data-trend]", state.trend, "trend");
-  }
-
-  function td(value, className) { const node = document.createElement("td"); node.textContent = value; if (className) node.className = className; return node; }
-  function renderProviders() {
-    const body = $("providersBody"); clear(body); const providers = state.snapshot?.trends?.[String(state.range)]?.providers || state.snapshot?.providers || []; const hasCost = Boolean(state.snapshot?.capabilities?.cost);
-    document.querySelectorAll(".cost-column").forEach((node) => { node.hidden = !hasCost; });
-    document.querySelectorAll(".quota-column").forEach((node) => { node.hidden = true; });
-    text("providersSubtitle", t("providersSub", providers.length));
-    providers.forEach((provider) => { const row = document.createElement("tr"); const name = document.createElement("td"); const primary = document.createElement("span"); primary.className = "cell-primary"; primary.textContent = provider.label || provider.id; name.appendChild(primary); const secondary = document.createElement("span"); secondary.className = "cell-secondary"; secondary.textContent = provider.requests ? provider.id : t("providerUnknown"); name.appendChild(secondary); row.appendChild(name); row.appendChild(td(fmt(provider.requests), "numeric")); row.appendChild(td(fmt(provider.tokens), "numeric")); row.appendChild(td(fmt(provider.modelCount || provider.models?.length || 0), "numeric")); if (hasCost) row.appendChild(td(provider.cost == null ? t("noCost") : `${fmtCost(provider.cost)} · ${Math.round((provider.costCoverage || 0) * 100)}%`, "numeric")); body.appendChild(row); });
-  }
-  function renderModels() {
-    const body = $("modelsBody"); clear(body); const models = state.snapshot?.trends?.[String(state.range)]?.models || state.snapshot?.models || []; const hasCost = Boolean(state.snapshot?.capabilities?.cost); text("modelsSubtitle", t("modelsSub", models.length));
-    models.forEach((model) => { const row = document.createElement("tr"); const name = td(model.label || model.id); name.className = "cell-primary"; row.appendChild(name); row.appendChild(td(model.providerId || t("unknown"))); row.appendChild(td(fmt(model.requests), "numeric")); row.appendChild(td(fmt(model.tokens), "numeric")); if (hasCost) row.appendChild(td(model.cost == null ? t("noCost") : `${fmtCost(model.cost)} · ${Math.round((model.costCoverage || 0) * 100)}%`, "numeric")); body.appendChild(row); });
-  }
-  function renderProvenance() {
-    const grid = $("provenanceGrid"); clear(grid); const entries = [[t("usageSource"), t("localUsage")], [t("costSource"), t("priceEstimate")], [t("quotaSource"), t("quotaHidden")]];
-    entries.forEach(([heading, body]) => { const item = document.createElement("div"); item.className = "provenance-item"; const strong = document.createElement("strong"); strong.textContent = heading; item.appendChild(strong); item.appendChild(document.createTextNode(body)); grid.appendChild(item); });
-  }
   function render() {
-    applyAppearance(); renderStatic(); renderToolbar(); renderState();
-    if (state.snapshot?.hasData) { renderMetrics(); renderChart(); renderProviders(); renderModels(); renderProvenance(); }
+    applyAppearance();
+    renderStatic();
+    renderToolbar();
+    renderState();
+    if (!$("dashboard")?.hidden) renderChannels();
     document.documentElement.dataset.booting = "false";
-    const menu = $("appearanceMenu"); menu.hidden = !state.menu; $("appearanceButton").setAttribute("aria-expanded", String(state.menu));
-    text("appearanceNote", state.preferences.theme === "auto" && state.preferences.locale === "auto" ? t("following") : t("following"));
+    const menu = $("appearanceMenu");
+    if (menu) menu.hidden = !state.menu;
+    if ($("appearanceButton")) $("appearanceButton").setAttribute("aria-expanded", String(state.menu));
+    text("appearanceNote", t("following"));
   }
 
-  function updatePreference(key, value) { state.preferences[key] = value; savePreferences(); state.menu = false; render(); }
+  function updatePreference(key, value) {
+    state.preferences[key] = value;
+    savePreferences();
+    state.menu = false;
+    render();
+  }
   function bind() {
-    $("reloadButton").addEventListener("click", () => void readSettings(true));
-    $("appearanceButton").addEventListener("click", (event) => { event.stopPropagation(); state.menu = !state.menu; render(); });
+    $("reloadButton")?.addEventListener("click", () => void readSettings(true));
+    $("appearanceButton")?.addEventListener("click", (event) => { event.stopPropagation(); state.menu = !state.menu; render(); });
     document.querySelectorAll("[data-theme-choice]").forEach((node) => node.addEventListener("click", () => updatePreference("theme", node.dataset.themeChoice)));
     document.querySelectorAll("[data-locale-choice]").forEach((node) => node.addEventListener("click", () => updatePreference("locale", node.dataset.localeChoice)));
-    document.querySelectorAll("[data-range]").forEach((node) => node.addEventListener("click", () => { state.range = Number(node.dataset.range); render(); }));
-    document.querySelectorAll("[data-trend]").forEach((node) => node.addEventListener("click", () => { if (!node.disabled) { state.trend = node.dataset.trend; render(); } }));
     document.addEventListener("click", () => { if (state.menu) { state.menu = false; render(); } });
-    $("appearanceMenu").addEventListener("click", (event) => event.stopPropagation());
+    $("appearanceMenu")?.addEventListener("click", (event) => event.stopPropagation());
     document.addEventListener("keydown", (event) => { if (event.key === "Escape" && state.menu) { state.menu = false; render(); } });
-    document.addEventListener("visibilitychange", restartPolling); window.addEventListener("focus", () => void readSettings(false));
+    document.addEventListener("visibilitychange", restartPolling);
+    rootWindow.addEventListener?.("focus", () => void readSettings(false));
   }
-  function restartPolling() { if (state.timer) clearInterval(state.timer); state.timer = setInterval(() => void readSettings(false), document.hidden ? POLL_HIDDEN_MS : POLL_VISIBLE_MS); }
-  async function init() { state.preferences = readPreferences(); state.appearance = boot.cached; applyAppearance(); render(); bind(); await readSettings(true); restartPolling(); }
-  window.__modelUsageDashboard = { state, readSettings, render, applyAppearance, setRange(value) { state.range = Number(value) || 30; render(); } };
+  function restartPolling() {
+    if (state.timer) clearInterval(state.timer);
+    state.timer = setInterval(() => void readSettings(false), document.hidden ? POLL_HIDDEN_MS : POLL_VISIBLE_MS);
+  }
+  async function init() {
+    state.preferences = readPreferences();
+    state.appearance = boot.cached;
+    applyAppearance();
+    render();
+    bind();
+    await readSettings(true);
+    restartPolling();
+  }
+  rootWindow.__modelUsageDashboard = {
+    state,
+    readSettings,
+    render,
+    applyAppearance,
+  };
   void init();
 })();

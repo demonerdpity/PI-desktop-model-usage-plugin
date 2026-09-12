@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "pi.model-usage-dashboard",
   "name": "Model Usage Dashboard",
-  "version": "0.1.0",
-  "description": "A private, local-first dashboard for PI-Desktop model requests, tokens, trends, and clearly labelled API-equivalent estimates.",
-  "author": "PI-Desktop community",
+  "version": "0.2.0",
+  "description": "A private, channel-first dashboard for verified provider quota windows and secondary local usage statistics.",
+  "author": "demonerdpity",
   "icon": "assets/icon.png",
   "main": "main.js",
   "ui": {

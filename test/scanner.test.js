@@ -58,3 +58,17 @@ test("async runtime scanner streams lines and preserves privacy diagnostics", as
   assert.equal(result.diagnostics.truncatedLines, 1);
   assert.equal(JSON.stringify(result).includes("PRIVATE_FIXTURE_TEXT"), false);
 });
+
+test("async changed sources rebuild from scratch without deleted facts", async () => {
+  const root = tempDir();
+  const file = path.join(root, "async.jsonl");
+  fs.writeFileSync(file, line(assistant("kept-before", 1)) + line(assistant("removed", 2)));
+  const first = await scanSessionDirectoryAsync(root);
+  assert.equal(first.facts.length, 2);
+
+  fs.writeFileSync(file, line(assistant("kept-after", 3)));
+  const second = await scanSessionDirectoryAsync(root, { previous: first.sourceState });
+  assert.equal(second.facts.length, 1);
+  assert.equal(second.facts[0].tokens.input, 3);
+  assert.equal(second.facts.some((fact) => fact.tokens.input === 1 || fact.tokens.input === 2), false);
+});

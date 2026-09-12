@@ -28,3 +28,46 @@ test("quota remains absent when no real adapter value exists", () => {
   assert.equal(domain.quotaWindow({}), null);
   assert.deepEqual(domain.capabilities({ requests: true, tokens: true }), { requests: true, tokens: true, cost: false, quota: false, reset: false, history: false });
 });
+
+test("quota windows keep only verified percentages and reset values", () => {
+  assert.deepEqual(domain.quotaWindow({ label: "5h", usedPercent: 40, remainingPercent: 60, resetAt: 1_770_768_000 }), {
+    label: "5h",
+    usedPercent: 40,
+    remainingPercent: 60,
+    resetAt: 1_770_768_000_000,
+  });
+  assert.equal(domain.quotaWindow({ label: "Weekly", usedPercent: 101 }), null);
+  const channel = domain.channelSnapshot({
+    id: "codex",
+    quotaWindows: [{ label: "5h", remainingPercent: 55 }],
+  });
+  assert.equal(channel.quotaAvailable, true);
+  assert.equal(channel.capabilities.quota, true);
+  assert.equal(channel.capabilities.reset, false);
+});
+
+test("channel snapshots reject zero reset times and whitelist provenance", () => {
+  const channel = domain.channelSnapshot({
+    id: "codex",
+    quotaWindows: [{ label: "5h", usedPercent: 20, resetAt: 0 }],
+    provenance: {
+      quota: {
+        available: true,
+        sourceType: "provider-subscription-api",
+        endpoint: "https://chatgpt.com/backend-api/wham/usage?token=PRIVATE",
+        rawResponse: { token: "PRIVATE" },
+        accessToken: "PRIVATE",
+      },
+      rawResponse: "PRIVATE",
+    },
+  });
+  assert.equal(Object.hasOwn(channel.quotaWindows[0], "resetAt"), false);
+  assert.deepEqual(channel.provenance, {
+    quota: {
+      available: true,
+      sourceType: "provider-subscription-api",
+      endpoint: "https://chatgpt.com/backend-api/wham/usage",
+    },
+  });
+  assert.equal(JSON.stringify(channel).includes("PRIVATE"), false);
+});

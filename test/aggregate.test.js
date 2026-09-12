@@ -48,3 +48,49 @@ test("aggregate hides quota/reset and exposes estimate coverage", () => {
   assert.equal(result.cost.coverage, 0.5);
   assert.equal(result.cost.estimated, true);
 });
+
+test("aggregate merges verified quota-only channels without inventing unsupported windows", () => {
+  const now = new Date(2026, 1, 10, 12).getTime();
+  const result = aggregate.aggregate([], {
+    now,
+    quotaChannels: [{
+      id: "openai-codex",
+      label: "OpenAI Codex",
+      accountLabel: "Account 1",
+      plan: "plus",
+      quotaWindows: [
+        { label: "5h", usedPercent: 25, remainingPercent: 75, resetAt: now + 60_000 },
+        { label: "Weekly", usedPercent: 60, remainingPercent: 40 },
+      ],
+      provenance: { quota: { available: true, sourceType: "provider-subscription-api" } },
+    }],
+  });
+  const codex = result.providers.find((entry) => entry.id === "openai-codex");
+  assert.equal(codex.requests, 0);
+  assert.equal(codex.plan, "plus");
+  assert.equal(codex.quotaWindows.length, 2);
+  assert.equal(codex.quotaWindows[0].remainingPercent, 75);
+  assert.equal(result.capabilities.quota, true);
+  assert.equal(result.capabilities.reset, true);
+
+  const unsupported = aggregate.aggregate([], { now, quotaChannels: [{ id: "relay", label: "Relay", quotaWindows: [] }] });
+  const relay = unsupported.providers.find((entry) => entry.id === "relay");
+  assert.equal(relay.quotaAvailable, false);
+  assert.deepEqual(relay.quotaWindows, []);
+  assert.equal(unsupported.capabilities.quota, false);
+});
+
+test("a later empty duplicate cannot erase an earlier verified quota channel", () => {
+  const result = aggregate.aggregate([], {
+    quotaChannels: [
+      { id: "codex", label: "Codex", accountLabel: "Local label", plan: "plus", quotaWindows: [{ label: "5h", remainingPercent: 80 }] },
+      { id: "codex", label: "Codex", quotaWindows: [], provenance: { quota: { available: false, reason: "temporary failure" } } },
+    ],
+  });
+  const channel = result.providers.find((entry) => entry.id === "codex");
+  assert.equal(channel.quotaAvailable, true);
+  assert.equal(channel.quotaWindows[0].remainingPercent, 80);
+  assert.equal(channel.accountLabel, "Local label");
+  assert.equal(channel.plan, "plus");
+  assert.equal(channel.provenance.quota.available, true);
+});
