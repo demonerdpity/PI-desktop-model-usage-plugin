@@ -92,10 +92,10 @@ h1 { margin: 0; font-size: 15px; font-weight: 650; }
 .channel-detail { min-width: 0; display: inline-flex; align-items: baseline; gap: 5px; max-width: 100%; }
 .detail-label { color: var(--faint); white-space: nowrap; }
 .detail-value { min-width: 0; color: inherit; overflow-wrap: anywhere; word-break: break-word; }
-.quota-block { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 13px 9px; }
 .quota-heading, .usage-heading { margin-bottom: 1px; color: var(--faint); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .quota-window { padding: 8px 0 9px; border-top: 1px solid var(--border-soft); }
 .quota-window-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.window-summary { min-width: 0; display: flex; align-items: baseline; justify-content: flex-end; gap: 7px; }
 .quota-label { min-width: 0; color: var(--text); font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
 .quota-percent { flex: 0 0 auto; color: var(--accent); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .quota-progress { height: 5px; margin-top: 6px; overflow: hidden; background: var(--surface-raised); border-radius: 999px; }
@@ -109,7 +109,10 @@ h1 { margin: 0; font-size: 15px; font-weight: 650; }
 .quota-unavailable { padding: 8px 0 10px; color: var(--muted); font-size: 12px; }
 .quota-unavailable-title { color: var(--muted); font-weight: 600; }
 .quota-unavailable-note { display: block; margin-top: 3px; color: var(--faint); font-size: 10px; line-height: 1.35; }
-.usage-block { flex: 0 0 auto; min-width: 0; margin-top: auto; padding: 9px 13px 10px; border-top: 1px solid var(--border-soft); }
+.login-button { margin-top: 9px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-raised); cursor: pointer; }
+.login-button:hover:not(:disabled) { background: var(--surface-hover); }
+.login-button:disabled { color: var(--faint); cursor: default; }
+.usage-block { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; padding: 0 13px 10px; }
 .usage-window { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 6px 0; }
 .usage-window + .usage-window { border-top: 1px solid var(--border-soft); }
 .usage-window-label { flex: 0 0 auto; min-width: 0; color: var(--text); font-size: 11px; font-weight: 600; overflow-wrap: anywhere; }
@@ -134,6 +137,7 @@ h1 { margin: 0; font-size: 15px; font-weight: 650; }
   .scroller { padding-top: 12px; }
   .channel-header { padding-top: 11px; }
   .usage-window { align-items: flex-start; flex-direction: column; }
+  .quota-window-top, .window-summary { align-items: flex-start; flex-direction: column; }
   .usage-badges { justify-content: flex-start; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

@@ -282,6 +282,7 @@ describe("Codex quota parser extensions", () => {
 
     const longest = alignQuotaChannelId(localChannel, ["openai", "openai-codex"]);
     assert.equal(longest.id, "openai-codex");
+    assert.equal(alignQuotaChannelId(codexChannel, [], "account-uuid").id, "account-uuid");
     assert.equal(alignQuotaChannelId(localChannel, ["anthropic"]).id, "local-channel");
     assert.equal(alignQuotaChannelId(localChannel, [null, 42, {}]).id, "local-channel");
     assert.equal(alignQuotaChannelId(null, ["openai"]), null);

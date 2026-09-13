@@ -108,6 +108,23 @@ test("a later empty duplicate cannot erase an earlier verified quota channel", (
   assert.equal(channel.provenance.quota.available, true);
 });
 
+test("legacy Codex usage and quota merge into the unique current account", () => {
+  const now = new Date(2026, 1, 10, 12).getTime();
+  const result = aggregate.aggregate([fact("legacy", now, "openai-codex", "gpt-5-codex", { total: 25 })], {
+    now,
+    catalog: {
+      providers: [{ id: "account-uuid", label: "OpenAI (ChatGPT Plus/Pro)", models: [] }],
+      providerLabels: { "account-uuid": "OpenAI (ChatGPT Plus/Pro)" },
+      providerAliases: { "openai-codex": "account-uuid" },
+    },
+    quotaChannels: [{ id: "account-uuid", label: "OpenAI Codex", quotaWindows: [{ label: "5h", remainingPercent: 80 }] }],
+  });
+  assert.deepEqual(result.providers.map((provider) => provider.id), ["account-uuid"]);
+  assert.equal(result.providers[0].label, "OpenAI (ChatGPT Plus/Pro)");
+  assert.equal(result.providers[0].usageWindows.find((window) => window.id === "5h").tokens, 25);
+  assert.equal(result.providers[0].quotaWindows[0].remainingPercent, 80);
+});
+
 test("provider usage windows use inclusive rolling boundaries, isolated totals, and retained diagnostics", () => {
   const now = new Date(2026, 1, 10, 12).getTime();
   const hour = 60 * 60 * 1000;

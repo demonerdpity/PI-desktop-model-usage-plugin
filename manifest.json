@@ -41,8 +41,10 @@
   },
   "permissions": [
     "ui.panel",
-    "models.list"
+    "models.list",
+    "net.fetch"
   ],
+  "net": { "domains": ["chatgpt.com"] },
   "engines": {
     "piDesktop": ">=0.2.0"
   },

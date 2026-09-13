@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { spawn } = require("node:child_process");
 const {
   aggregate,
 } = require("./lib/aggregate");
@@ -49,6 +50,7 @@ let lastScanFinishedAt = 0;
 let quotaCache = { at: 0, channels: [] };
 let progressWrite = null;
 let testSessionRoot = null;
+let loginProcess = null;
 
 function hostRootFromDataPath(value) {
   const base = String(value || "").trim();
@@ -126,10 +128,10 @@ function usesCodexChannel(ids) {
  * card carrying a reason code, because "why is my quota missing" has to be
  * answerable from the panel instead of leaving a silently empty section.
  */
-async function fetchCodexQuotaChannel(now, knownIds) {
+async function fetchCodexQuotaChannel(now, knownIds, preferredId = "") {
   const credential = readCodexCredentials();
   const signedInBefore = credential.ok || credential.reason !== CREDENTIAL_REASONS.fileMissing;
-  if (!signedInBefore && !usesCodexChannel(knownIds)) return null;
+  if (!signedInBefore && !preferredId && !usesCodexChannel(knownIds)) return null;
   const planHint = credential.ok ? credential.planHint : "";
   if (!credential.ok) {
     return codexChannelFromResult({ ok: false, reason: credential.reason }, { collectedAt: now, planHint });
@@ -154,14 +156,14 @@ async function fetchCodexQuotaChannel(now, knownIds) {
  * still merges onto the right channel on the next call. A failed lookup
  * degrades to a card that names the failure instead of blanking the dashboard.
  */
-async function resolveQuotaChannels(now, scanProviderIds = []) {
+async function resolveQuotaChannels(now, scanProviderIds = [], preferredId = "") {
   const knownIds = knownProviderIds(scanProviderIds);
   let channel;
-  if (quotaCache.at && now - quotaCache.at < QUOTA_CACHE_MS) {
+  if (quotaCache.at && now - quotaCache.at < QUOTA_CACHE_MS && quotaCache.channel) {
     channel = quotaCache.channel;
   } else {
     try {
-      channel = await fetchCodexQuotaChannel(now, knownIds);
+      channel = await fetchCodexQuotaChannel(now, knownIds, preferredId);
     } catch {
       // The local usage scan is the primary product; a quota outage must not
       // break it, and the next refresh retries.
@@ -170,13 +172,62 @@ async function resolveQuotaChannels(now, scanProviderIds = []) {
     quotaCache = { at: now, channel };
   }
   if (!channel) return [];
-  const aligned = alignQuotaChannelId(channel, knownIds);
+  const aligned = alignQuotaChannelId(channel, knownIds, preferredId);
   return [{
     ...aligned,
     id: aligned.id || CODEX_CHANNEL_ID,
     label: aligned.label || CODEX_CHANNEL_LABEL,
     subscriptionQuota: true,
   }];
+}
+
+function startCodexLogin(spawnImpl = spawn) {
+  if (loginProcess) return Promise.resolve({ ok: true, running: true });
+  return new Promise((resolve) => {
+    let settled = false;
+    let child;
+    try {
+      const windows = process.platform === "win32";
+      child = spawnImpl(windows ? (process.env.ComSpec || "cmd.exe") : "codex", windows ? ["/d", "/s", "/c", "codex login"] : ["login"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      loginProcess = child;
+    } catch {
+      resolve({ ok: false, reason: "codex-cli-unavailable" });
+      return;
+    }
+    child.once("spawn", () => {
+      settled = true;
+      void publish({ codexLogin: { status: "running", updatedAt: Date.now() } }).catch(() => undefined);
+      resolve({ ok: true, running: true });
+    });
+    child.once("error", () => {
+      loginProcess = null;
+      void publish({ codexLogin: { status: "failed", reason: "codex-cli-unavailable", updatedAt: Date.now() } }).catch(() => undefined);
+      if (!settled) resolve({ ok: false, reason: "codex-cli-unavailable" });
+    });
+    child.once("exit", (code) => {
+      loginProcess = null;
+      const ok = code === 0;
+      void publish({ codexLogin: { status: ok ? "complete" : "failed", reason: ok ? "" : "codex-login-failed", updatedAt: Date.now() } }).catch(() => undefined);
+      if (ok) {
+        const pending = refreshPromise;
+        const refreshAfterLogin = () => {
+          quotaCache = { at: 0, channel: null };
+          return refreshFacts("codex-login");
+        };
+        void Promise.resolve(pending ? pending.catch(() => undefined).then(refreshAfterLogin) : refreshAfterLogin())
+          .catch(() => undefined);
+      }
+    });
+    child.unref?.();
+  });
+}
+
+async function onPanelInvoke(channel) {
+  if (channel === "codex.login") return startCodexLogin();
+  throw Object.assign(new Error("Unsupported panel action"), { code: "UNSUPPORTED" });
 }
 
 async function publish(partial) {
@@ -308,7 +359,7 @@ function refreshFacts(reason = "manual") {
       const quotaChannels = await resolveQuotaChannels(now, [
         ...retained.map((fact) => fact?.providerId),
         ...catalog.providers.map((provider) => provider?.id),
-      ]);
+      ], catalog.codexProviderId);
       const snapshot = aggregate(retained, {
         catalog,
         generatedAt: startedAt,
@@ -465,6 +516,7 @@ async function onUnload() {
 
 module.exports = {
   onLoad,
+  onPanelInvoke,
   onUnload,
   __test: {
     aggregate,
@@ -473,6 +525,7 @@ module.exports = {
     refreshFacts,
     resolveSessionRoot,
     resolveQuotaChannels,
+    startCodexLogin,
     setSessionRoot(root) {
       testSessionRoot = root;
       sessionsRoot = resolveSessionRoot(root);
@@ -489,6 +542,7 @@ module.exports = {
       refreshPromise = null;
       lastScanFinishedAt = 0;
       quotaCache = { at: 0, channels: [] };
+      loginProcess = null;
       testSessionRoot = null;
       stopSourceWatch();
       stopAppearanceWatch();

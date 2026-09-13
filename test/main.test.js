@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { EventEmitter } = require("node:events");
 const main = require("../main");
 
 function makeRoot() {
@@ -117,7 +118,7 @@ function stubHost(overrides = {}) {
 }
 
 /** Runs one quota resolution against an injected host transport. */
-async function resolveQuotaWith({ codexHome, token, transport }) {
+async function resolveQuotaWith({ codexHome, token, transport, knownIds = [], preferredId = "" }) {
   const previousPi = globalThis.pi;
   const previousCodexHome = process.env.CODEX_HOME;
   const previousHome = process.env.HOME;
@@ -132,7 +133,7 @@ async function resolveQuotaWith({ codexHome, token, transport }) {
   globalThis.pi = stubHost(transport ? { net: { fetch: transport } } : {});
   try {
     main.__test.reset();
-    return { channels: await main.__test.resolveQuotaChannels(Date.now()), token };
+    return { channels: await main.__test.resolveQuotaChannels(Date.now(), knownIds, preferredId), token };
   } finally {
     globalThis.pi = previousPi;
     if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
@@ -276,4 +277,122 @@ test("quota transport problems are distinguishable and cost no network call", as
 
   const signedOut = await resolveQuotaWith({ codexHome: null, transport: null });
   assert.deepEqual(signedOut.channels, [], "a machine with no Codex login gets no Codex card");
+
+  const hostRecognized = await resolveQuotaWith({ codexHome: null, transport: null, preferredId: "account-uuid" });
+  assert.equal(hostRecognized.channels[0].id, "account-uuid");
+  assert.equal(hostRecognized.channels[0].provenance.quota.reason, "credential-file-missing");
+});
+
+test("a cached signed-out result does not hide a newly recognized host account", async () => {
+  const previousPi = globalThis.pi;
+  globalThis.pi = stubHost();
+  try {
+    main.__test.reset();
+    const now = Date.now();
+    Object.assign(main.__test.getState().quotaCache, { at: now, channel: null });
+    const channels = await main.__test.resolveQuotaChannels(now, [], "account-uuid");
+    assert.equal(channels[0].id, "account-uuid");
+  } finally {
+    main.__test.reset();
+    globalThis.pi = previousPi;
+  }
+});
+
+test("Codex login starts once and publishes completion without exposing process details", async () => {
+  const previousPi = globalThis.pi;
+  const published = [];
+  const child = new EventEmitter();
+  child.unref = () => {};
+  let starts = 0;
+  globalThis.pi = stubHost({ plugin: { getDataPath: async () => null, setSettings: async (value) => published.push(value) } });
+  try {
+    main.__test.reset();
+    const first = main.__test.startCodexLogin((command, args, options) => {
+      starts += 1;
+      assert.equal(command, process.platform === "win32" ? (process.env.ComSpec || "cmd.exe") : "codex");
+      assert.deepEqual(args, process.platform === "win32" ? ["/d", "/s", "/c", "codex login"] : ["login"]);
+      assert.equal(options.stdio, "ignore");
+      process.nextTick(() => child.emit("spawn"));
+      return child;
+    });
+    assert.deepEqual(await first, { ok: true, running: true });
+    assert.deepEqual(await main.__test.startCodexLogin(() => { throw new Error("must not run"); }), { ok: true, running: true });
+    assert.equal(starts, 1);
+    child.emit("exit", 0);
+    await waitFor(() => published.some((entry) => entry.codexLogin?.status === "complete"));
+    assert.equal(JSON.stringify(published).includes("codex.cmd"), false);
+  } finally {
+    main.__test.reset();
+    globalThis.pi = previousPi;
+  }
+});
+
+test("successful Codex login queues a refresh after an in-flight scan", async () => {
+  const { root, sessions } = makeRoot();
+  const { codexHome } = writeSyntheticCredentials();
+  const previousPi = globalThis.pi;
+  const previousCodexHome = process.env.CODEX_HOME;
+  const child = new EventEmitter();
+  child.unref = () => {};
+  let modelLists = 0;
+  let quotaRequests = 0;
+  let releaseFirstList;
+  const firstList = new Promise((resolve) => { releaseFirstList = resolve; });
+  process.env.CODEX_HOME = codexHome;
+  globalThis.pi = stubHost({
+    plugin: { getDataPath: async () => path.join(root, "plugins", "data", "pi.model-usage-dashboard"), setSettings: async () => {} },
+    models: {
+      list: async () => {
+        modelLists += 1;
+        if (modelLists === 1) await firstList;
+        return [];
+      },
+    },
+    net: {
+      fetch: async () => {
+        quotaRequests += 1;
+        return { status: 200, headers: {}, bodyText: JSON.stringify(USAGE_BODY) };
+      },
+    },
+  });
+  try {
+    main.__test.reset();
+    main.__test.setSessionRoot(sessions);
+    await main.onLoad();
+    await waitFor(() => modelLists === 1);
+    const login = main.__test.startCodexLogin(() => {
+      process.nextTick(() => child.emit("spawn"));
+      return child;
+    });
+    await login;
+    child.emit("exit", 0);
+    releaseFirstList();
+    await waitFor(() => modelLists === 2 && quotaRequests === 2);
+    await main.onUnload();
+  } finally {
+    main.__test.reset();
+    globalThis.pi = previousPi;
+    if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = previousCodexHome;
+  }
+});
+
+test("Codex login exit after unload does not throw", async () => {
+  const previousPi = globalThis.pi;
+  const child = new EventEmitter();
+  child.unref = () => {};
+  globalThis.pi = stubHost();
+  try {
+    main.__test.reset();
+    const login = main.__test.startCodexLogin(() => {
+      process.nextTick(() => child.emit("spawn"));
+      return child;
+    });
+    await login;
+    await main.onUnload();
+    assert.doesNotThrow(() => child.emit("exit", 0));
+  } finally {
+    main.__test.reset();
+    globalThis.pi = previousPi;
+  }
 });

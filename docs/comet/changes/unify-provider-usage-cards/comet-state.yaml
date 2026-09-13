@@ -1,0 +1,278 @@
+schema: comet.native.v4
+name: unify-provider-usage-cards
+language: zh-CN
+phase: archive
+status: active
+state_version: 15
+brief: brief.md
+shape_confirmation_hash: fc923fa39b1316502270bddce4f738b01cb4bc14830004d58fe97149f3ca3eaa
+spec_changes:
+  - capability: dashboard-usage
+    operation: create
+    source: specs/dashboard-usage/spec.md
+workspace:
+  isolation: current
+  change_branch: main
+  target_branch: main
+  finish: null
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 3
+  attempt: 2
+  retry_epoch: 0
+  failed_iteration_count: 2
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：给定 `models.list` 中恰有一个名为 OpenAI ChatGPT/Codex 的当前 UUID 渠道，且本地历史包含
+      `openai-codex` usage，刷新后只显示一个官方渠道卡片，卡片同时保留当前账号名称和历史 usage；给定两个匹配账号时不任意归并历史
+      usage。
+    result: passed
+    reason:
+      text: A unique current ChatGPT/Codex account receives legacy usage and quota
+        aliases; multiple candidates remain separate.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：给定官方 quota 和相同渠道的本地 usage，5h 与 Weekly
+      各只显示一行，该行同时包含对应的额度进度/百分比、重置时间以及请求、Token、可用时的费用。
+    result: passed
+    reason:
+      text: 5h and Weekly each render one combined row with usage metrics, quota
+        progress/percentage, and reset.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：给定只有 API/本地 usage 的渠道，卡片只显示有数据的统一窗口行而没有空订阅区；给定只有 quota 的渠道，卡片只显示 quota
+      行而没有独立的空 API/本地区。
+    result: passed
+    reason:
+      text: API-only and quota-only cards render only available data without empty
+        source sections.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：给定 PI-Desktop 已登录的唯一官方账号但没有可读 Codex
+      `auth.json`，仍只显示该官方卡片，并准确说明宿主登录已识别但凭证按平台安全边界不可交给插件，同时显示键盘可操作的“登录 Codex”按钮。
+    result: passed
+    reason:
+      text: The recognized official account remains one card without auth.json, with
+        accurate security-boundary text and a keyboard-operable login button.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：点击“登录 Codex”时只启动一次本机 `codex login`；启动失败显示错误，进程成功结束后清空 quota 缓存并刷新，绝不把
+      token 写入 dashboard snapshot、settings 或日志。
+    result: passed
+    reason:
+      text: Login is single-process, launches correctly on Windows, safely reports
+        failure, waits for old refreshes before cache invalidation and forced
+        refresh, and never exposes tokens.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：安装清单声明 `net.fetch` 和 `chatgpt.com`，有效 Codex 凭证下 quota 请求通过 PI-Desktop
+      审计网络 API 发往既有 usage endpoint；网络、权限和服务端失败仍降级成卡片内原因而不影响本地 usage。
+    result: passed
+    reason:
+      text: Manifest egress permissions, audited pi.net.fetch endpoint use, and
+        failure degradation preserve local usage.
+      truncated: false
+builder_handoff:
+  candidate_id: 7b86767a-165f-46f8-8d9b-420a3d097152
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:ff032f5b-c6ff-4657-9367-a75911f8f89f
+  iteration: 3
+  summary:
+    text: Repaired A5's remaining race by invalidating quota cache only after any
+      pre-login refresh settles and immediately before the post-login refresh;
+      strengthened the regression test to require a second quota transport call.
+    truncated: false
+  addressed_acceptance_ids:
+    - A5
+  checks:
+    - name:
+        text: npm test
+        truncated: false
+      result: passed
+      note:
+        text: 70/70 tests passed, including two post-login quota requests in the
+          concurrent refresh case
+        truncated: false
+    - name:
+        text: node --check
+        truncated: false
+      result: passed
+      note:
+        text: main.js and renderer/app.js passed
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors
+        truncated: false
+    - name:
+        text: Windows Codex executable path
+        truncated: false
+      result: passed
+      note:
+        text: Static cmd.exe strategy resolved the installed Codex CLI
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The real-path launch check uses codex --version to avoid opening an
+        interactive login during automated verification.
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: A fresh independent read-only review confirmed the stale-cache race is
+        closed, lifecycle ordering remains safe, and the strengthened test
+        observes two quota requests.
+      truncated: false
+    reviewer_execution_ref: /root/cache_race_review
+  submitted_at: 2026-09-13T01:49:28.536Z
+blockers: []
+verification:
+  candidate_id: 7b86767a-165f-46f8-8d9b-420a3d097152
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:f7d9a739-d595-46af-82ea-37f50aa94a27
+  iteration: 3
+  attempt: 2
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: npm-test
+      name:
+        text: npm test
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 877
+    - id: node-check-main
+      name:
+        text: node check main
+        truncated: false
+      argv_display:
+        - text: --check
+          truncated: false
+        - text: main.js
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 46
+    - id: git-diff-check
+      name:
+        text: git diff check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 38
+    - id: windows-codex-path
+      name:
+        text: Windows Codex executable path
+        truncated: false
+      argv_display:
+        - text: -e
+          truncated: false
+        - text: const {spawnSync}=require('node:child_process');
+            if(process.platform!=='win32') process.exit(0); const
+            r=spawnSync(process.env.ComSpec||'cmd.exe',['/d','/s','/c','codex
+            --version'],{windowsHide:true}); process.exit(r.status===0?0:1)
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 134
+  summary:
+    text: Final independent full verification passed all A1-A6 with 70/70 tests and
+      all Runtime checks passing.
+    truncated: false
+  risks:
+    - text: README network/privacy text is stale and should be synchronized before
+        release.
+      truncated: false
+    - text: Renderer coverage is source-structure based rather than full DOM
+        integration.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-13T02:01:21.836Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A5
+    summary:
+      text: A1-A4 and A6 pass; A5 fails because the Windows .cmd launch strategy is
+        not executable under the project's actual Node runtime.
+      truncated: false
+    completed_at: 2026-09-13T01:38:26.608Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A5
+    summary:
+      text: Windows launch is fixed, but quota cache must be cleared again after the
+        pending refresh settles and immediately before the codex-login refresh.
+      truncated: false
+    completed_at: 2026-09-13T01:46:16.458Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Repair verification passed for A5; final full verification is required.
+      truncated: false
+    completed_at: 2026-09-13T01:56:26.042Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 2
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Final independent full verification passed all A1-A6 with 70/70 tests and
+        all Runtime checks passing.
+      truncated: false
+    completed_at: 2026-09-13T02:01:21.836Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-09-13T01:03:01.492Z
