@@ -20,7 +20,7 @@ The implementation follows Cockpit Tools' actual distinction rather than treatin
 
 `lib/adapters/codex-quota.js` implements the credential-free normalization for the successful Codex usage response. It does not perform authentication, retain the raw response, or convert missing windows to 100% remaining.
 
-PI-Desktop currently exposes authenticated model display information through `models.list`, but explicitly does not expose keys, credentials, provider usage, subscription quota, or an authenticated provider-request proxy. Its data directory is protected from plugin file access. This marketplace-safe build therefore does not read Codex `auth.json`, browser cookies, PI-Desktop provider storage, OAuth tokens, or API keys, and it does not request `net.fetch`. Live provider quota and account totals require a future host-owned quota/credential proxy that returns only normalized data.
+PI-Desktop exposes authenticated model display information through `models.list`, but does not expose provider keys or OAuth tokens through the plugin API. When a local Codex credential file is available, the plugin reads only the access token needed for the read-only `chatgpt.com/backend-api/wham/usage` request; the token is never written to snapshots, settings, logs, or error text. The request uses the host-audited `pi.net.fetch` path and is limited by the manifest allowlist. If the credential or host network API is unavailable, the card remains visible and reports the reason instead of blocking local usage.
 
 ## Local usage source
 
@@ -40,14 +40,14 @@ The cache lives below `pi.plugin.getDataPath()` as compact facts, source stamps,
 | Source/channel | Verified quota windows | Secondary local usage | API-equivalent estimate |
 |---|---:|---:|---:|
 | PI-Desktop provider ids | Unavailable in the current public plugin API | Yes, when present in local session records | Exact bundled aliases only |
-| Codex `wham/usage` response | Parser implemented; transport awaits a host credential broker | Yes, when present locally | Exact bundled aliases only |
+| Codex `wham/usage` response | Read-only subscription windows when Codex credentials and host network access are available | Yes, when present locally | Exact bundled aliases only |
 | OpenAI-compatible relays | Adapter-specific response required | Yes, kept separate by provider id | Never guesses relay pricing |
 
 Prices are a versioned offline snapshot in `lib/pricing.js`, with source URL and retrieval date. Matching is exact after case normalization; unknown/custom model names do not show `$0`. All displayed costs are marked as API-equivalent estimates.
 
 ## Permissions and privacy
 
-The manifest requests only `ui.panel` and `models.list`. No network request, secret setting, browser cookie, private web endpoint, shell, arbitrary IPC, provider configuration, or credential is accessed. The renderer has no Node access and uses only supported `window.pluginBridge` methods; missing bridge methods do not crash the page.
+The manifest requests `ui.panel`, `models.list`, and `net.fetch`. Network access is restricted to the declared provider domains, including ChatGPT, OpenAI, Anthropic, Gemini, Groq, OpenRouter, DeepSeek, Mistral, xAI, Together, Fireworks, Cohere, and Perplexity. The plugin does not read browser cookies, PI-Desktop private storage, API keys, or provider configuration. The renderer has no Node access and uses only supported `window.pluginBridge` methods; missing bridge methods do not crash the page.
 
 The refresh button reloads the latest published settings snapshot; it does not trigger a scan. Run the command again when an immediate scan is needed.
 
@@ -59,4 +59,4 @@ This plugin has no runtime dependencies or build step. Run:
 npm test
 ```
 
-Tests use Node's built-in test runner and anonymized fixtures. Validate and package with the official PI-Desktop `PluginCheck` and `PluginPack` tools.
+Tests use Node's built-in test runner and anonymized fixtures. Validate locally with `npm test`, `node --check main.js`, `node --check renderer/app.js`, and `git diff --check`. For marketplace submission, copy this plugin under `plugins/pi.model-usage-dashboard` in the official `vastsa/pi-desktop-plugins` repository, run `python3 scripts/pack_plugin.py plugins/pi.model-usage-dashboard`, run `python3 scripts/security_audit.py --check-packages`, then run `python3 scripts/rebuild_catalog.py` and submit the resulting source, package, and catalog changes as a pull request.
