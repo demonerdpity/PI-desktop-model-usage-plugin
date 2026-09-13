@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+
+- Reduced the reset-credit display to compact count badges only.
+
 ## 0.2.2
 
 - Published the network permission update in the distributable package, including the ChatGPT quota endpoint and mainstream provider API domains.

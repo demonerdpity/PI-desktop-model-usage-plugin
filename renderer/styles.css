@@ -104,8 +104,8 @@ h1 { margin: 0; font-size: 15px; font-weight: 650; }
 .quota-progress-fill.used { background: var(--accent-strong); }
 .quota-reset { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; color: var(--faint); font-size: 10px; }
 .credit-usage { padding: 9px 0 4px; border-top: 1px solid var(--border-soft); }
-.reset-credits { padding: 8px 0 2px; border-top: 1px solid var(--border-soft); }
-.credit-badges { justify-content: flex-start; margin-top: 7px; }
+.reset-credits { padding: 2px 0 0; }
+.credit-badges { justify-content: flex-start; }
 .quota-unavailable { padding: 8px 0 10px; color: var(--muted); font-size: 12px; }
 .quota-unavailable-title { color: var(--muted); font-weight: 600; }
 .quota-unavailable-note { display: block; margin-top: 3px; color: var(--faint); font-size: 10px; line-height: 1.35; }

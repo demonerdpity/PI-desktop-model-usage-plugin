@@ -12,4 +12,6 @@ test("renderer combines quota and local metrics in one optional usage block", ()
   assert.match(source, /usageWindowsFor\(channel\).*filter\(hasUsageWindowData\)/s);
   assert.match(source, /rootWindow\.pluginBridge\?\.invoke\?\.\("codex\.login"\)/);
   assert.match(source, /return block\.childNodes\.length > 1 \? block : null/);
+  assert.match(source, /function renderResetCredits\(value\)[\s\S]*return badges\.childNodes\.length/);
+  assert.doesNotMatch(source, /function renderResetCredits\(value\)[\s\S]*quotaResetCreditsNote/);
 });

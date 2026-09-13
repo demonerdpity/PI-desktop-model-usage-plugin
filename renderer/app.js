@@ -757,13 +757,10 @@
     const applicable = numberValue(value.applicableCount);
     if (available === null && applicable === null) return null;
     const item = makeElement("div", "reset-credits");
-    item.appendChild(makeElement("span", "quota-label", t("quotaResetCredits")));
     const badges = makeElement("div", "usage-badges credit-badges");
     if (available !== null) appendUsageBadge(badges, t("resetCreditsAvailable"), fmt(available));
     if (applicable !== null) appendUsageBadge(badges, t("resetCreditsApplicable"), fmt(applicable));
-    if (badges.childNodes.length) item.appendChild(badges);
-    item.appendChild(makeElement("small", "quota-unavailable-note", t("quotaResetCreditsNote")));
-    return item;
+    return badges.childNodes.length ? (item.appendChild(badges), item) : null;
   }
 
   function showsSubscriptionQuota(channel, quotaInfo) {
