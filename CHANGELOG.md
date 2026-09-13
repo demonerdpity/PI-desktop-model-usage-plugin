@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+- Split cards into strict subscription quota and API/local usage sections.
+- Added provider-isolated rolling 5-hour, rolling 7-day, and retained-total local usage rows with requests, tokens, and exact-match API-equivalent cost estimates.
+- Hid subscription-unavailable messaging from ordinary API channels while keeping it on explicitly identified ChatGPT/OAuth subscription channels.
+- Added Cockpit-compatible `spend_control.individual_limit` and legacy `credits` total-allowance parsing without retaining raw provider responses.
+- Clarified that Cockpit Tools does not expose ChatGPT 5h/Weekly quotas for ordinary API keys; provider totals require provider-specific usage endpoints and credentials.
+
 ## 0.2.0
 
 - Replaced the token/trend-led dashboard with compact provider and account cards centered on verified quota windows.

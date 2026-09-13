@@ -71,3 +71,26 @@ test("channel snapshots reject zero reset times and whitelist provenance", () =>
   });
   assert.equal(JSON.stringify(channel).includes("PRIVATE"), false);
 });
+
+test("credit usage is normalized without raw provider data", () => {
+  const channel = domain.channelSnapshot({
+    id: "codex",
+    creditUsage: {
+      total: 100,
+      used: 40,
+      remaining: 60,
+      remainingPercent: 60,
+      resetAt: 1_770_768_000,
+      rawResponse: { accessToken: "PRIVATE" },
+    },
+  });
+  assert.deepEqual(channel.creditUsage, {
+    total: 100,
+    used: 40,
+    remaining: 60,
+    remainingPercent: 60,
+    resetAt: 1_770_768_000_000,
+    unlimited: false,
+  });
+  assert.equal(JSON.stringify(channel).includes("PRIVATE"), false);
+});

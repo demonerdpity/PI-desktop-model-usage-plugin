@@ -9,6 +9,15 @@ const {
 const { createLocalPiAdapter } = require("./lib/adapters/local-pi");
 const { discoverFromHost } = require("./lib/provider-catalog");
 const { createStore, pruneFacts, DERIVED_RETENTION_MS } = require("./lib/store");
+const { CREDENTIAL_REASONS, readCodexCredentials } = require("./lib/adapters/codex-auth");
+const { QUOTA_REASONS, createHostFetch, requestCodexUsage } = require("./lib/adapters/codex-quota-client");
+const {
+  CODEX_CHANNEL_ID,
+  CODEX_CHANNEL_LABEL,
+  CODEX_PROVIDER_ALIASES,
+  alignQuotaChannelId,
+  codexChannelFromResult,
+} = require("./lib/adapters/codex-quota");
 
 const COMMAND_ID = "modelUsageDashboard.open";
 const WATCH_DEBOUNCE_MS = 30_000;
@@ -16,6 +25,10 @@ const WATCH_MIN_GAP_MS = 5 * 60_000;
 const WATCH_MAX_STALE_MS = 15 * 60_000;
 const PROGRESS_PUBLISH_MS = 400;
 const APPEARANCE_POLL_MS = 2_000;
+// The provider's subscription endpoint is a single private GET; one minute of
+// caching keeps repeated scans from looking like abuse.
+const QUOTA_CACHE_MS = 60_000;
+const QUOTA_TIMEOUT_MS = 10_000;
 
 let disposed = false;
 let dataPath = null;
@@ -31,6 +44,9 @@ let watchTimer = null;
 let appearanceTimer = null;
 let appearanceHandler = null;
 let lastScanFinishedAt = 0;
+// Best-effort subscription quota, cached so the source watch cannot re-ask the
+// provider on every tick. Failure is reported inside the card, never thrown.
+let quotaCache = { at: 0, channels: [] };
 let progressWrite = null;
 let testSessionRoot = null;
 
@@ -73,6 +89,94 @@ function safeAppearance(value) {
     pluginTheme,
     readAt: Date.now(),
   };
+}
+
+/**
+ * Egress for the quota read. Only the host's audited `pi.net.fetch` is used:
+ * the manifest declares `net.fetch` plus `net.domains`, so a missing host API
+ * is a real, reportable condition rather than a reason to reach the provider
+ * over an unaudited path.
+ */
+function quotaFetch() {
+  return createHostFetch(globalThis.pi?.net);
+}
+
+/**
+ * Provider ids the quota card may attach to: whatever the current scan found,
+ * plus whatever the last published snapshot knew about. Scan-local ids matter
+ * because on a cold start there is no previous snapshot, and merging the
+ * subscription onto its own local channel is the whole point of the card.
+ */
+function knownProviderIds(scanIds = []) {
+  const fromSnapshot = Array.isArray(currentSnapshot?.providers)
+    ? currentSnapshot.providers.map((provider) => provider?.id)
+    : [];
+  return [...new Set([...scanIds, ...fromSnapshot].filter((id) => typeof id === "string" && id))];
+}
+
+/** Whether local evidence says the user actually owns a Codex subscription. */
+function usesCodexChannel(ids) {
+  const aliases = new Set(CODEX_PROVIDER_ALIASES.map((value) => value.toLowerCase()));
+  return ids.some((id) => aliases.has(String(id).trim().toLowerCase()));
+}
+
+/**
+ * Resolves the signed-in subscription's quota card, or null when the user shows
+ * no sign of owning a Codex subscription at all. Every failure still yields a
+ * card carrying a reason code, because "why is my quota missing" has to be
+ * answerable from the panel instead of leaving a silently empty section.
+ */
+async function fetchCodexQuotaChannel(now, knownIds) {
+  const credential = readCodexCredentials();
+  const signedInBefore = credential.ok || credential.reason !== CREDENTIAL_REASONS.fileMissing;
+  if (!signedInBefore && !usesCodexChannel(knownIds)) return null;
+  const planHint = credential.ok ? credential.planHint : "";
+  if (!credential.ok) {
+    return codexChannelFromResult({ ok: false, reason: credential.reason }, { collectedAt: now, planHint });
+  }
+  if (Number.isFinite(credential.expiresAt) && credential.expiresAt <= now) {
+    return codexChannelFromResult({ ok: false, reason: QUOTA_REASONS.credentialExpired }, { collectedAt: now, planHint });
+  }
+  // The access token lives only in this call and only inside the Authorization
+  // header: it is never placed in the snapshot, the store, or a log line.
+  const result = await requestCodexUsage({
+    accessToken: credential.accessToken,
+    accountId: credential.accountId,
+    fetchImpl: quotaFetch(),
+    timeoutMs: QUOTA_TIMEOUT_MS,
+  });
+  return codexChannelFromResult(result, { collectedAt: now, planHint });
+}
+
+/**
+ * Cached, failure-tolerant quota resolution. Only the provider's answer is
+ * cached, never the alignment, so a card resolved before local usage was known
+ * still merges onto the right channel on the next call. A failed lookup
+ * degrades to a card that names the failure instead of blanking the dashboard.
+ */
+async function resolveQuotaChannels(now, scanProviderIds = []) {
+  const knownIds = knownProviderIds(scanProviderIds);
+  let channel;
+  if (quotaCache.at && now - quotaCache.at < QUOTA_CACHE_MS) {
+    channel = quotaCache.channel;
+  } else {
+    try {
+      channel = await fetchCodexQuotaChannel(now, knownIds);
+    } catch {
+      // The local usage scan is the primary product; a quota outage must not
+      // break it, and the next refresh retries.
+      channel = null;
+    }
+    quotaCache = { at: now, channel };
+  }
+  if (!channel) return [];
+  const aligned = alignQuotaChannelId(channel, knownIds);
+  return [{
+    ...aligned,
+    id: aligned.id || CODEX_CHANNEL_ID,
+    label: aligned.label || CODEX_CHANNEL_LABEL,
+    subscriptionQuota: true,
+  }];
 }
 
 async function publish(partial) {
@@ -199,6 +303,12 @@ function refreshFacts(reason = "manual") {
       const retained = pruneFacts(result.facts, now);
       const retainedSources = sourceStateForFacts(result.sourceState, pruneFacts(result.facts, now, DERIVED_RETENTION_MS));
       const catalog = await discoverFromHost(pi, retained);
+      // Subscription quota is an enrichment: it is fetched through the host's
+      // audited egress path when one exists and never fails the local scan.
+      const quotaChannels = await resolveQuotaChannels(now, [
+        ...retained.map((fact) => fact?.providerId),
+        ...catalog.providers.map((provider) => provider?.id),
+      ]);
       const snapshot = aggregate(retained, {
         catalog,
         generatedAt: startedAt,
@@ -210,6 +320,7 @@ function refreshFacts(reason = "manual") {
           retentionDays: 90,
         },
         modelsListSupported: catalog.supported,
+        quotaChannels,
       });
       progress.flush();
       await store.saveFacts(retained, retainedSources, now);
@@ -361,6 +472,7 @@ module.exports = {
     hostRootFromDataPath,
     refreshFacts,
     resolveSessionRoot,
+    resolveQuotaChannels,
     setSessionRoot(root) {
       testSessionRoot = root;
       sessionsRoot = resolveSessionRoot(root);
@@ -376,12 +488,13 @@ module.exports = {
       currentSnapshot = null;
       refreshPromise = null;
       lastScanFinishedAt = 0;
+      quotaCache = { at: 0, channels: [] };
       testSessionRoot = null;
       stopSourceWatch();
       stopAppearanceWatch();
     },
     getState() {
-      return { dataPath, hostRoot, sessionsRoot, facts, currentSnapshot, refreshPromise };
+      return { dataPath, hostRoot, sessionsRoot, facts, currentSnapshot, refreshPromise, quotaCache };
     },
   },
 };

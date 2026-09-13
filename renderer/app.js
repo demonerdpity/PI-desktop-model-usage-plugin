@@ -27,20 +27,53 @@
       errorTitle: "Dashboard unavailable",
       errorBody: "The panel could not read its private plugin settings.",
       channels: "Channels",
-      channelsSub: (count) => `${count} channel${count === 1 ? "" : "s"} · quota windows from the provider adapter`,
+      channelsSub: (count) => `${count} channel${count === 1 ? "" : "s"} · verified subscription quota and locally observed usage`,
       account: "Account",
       plan: "Plan",
-      quota: "Quota",
+      subscriptionQuota: "Subscription quota",
       quotaWindow: "Quota window",
-      quotaUnavailable: "Quota unavailable",
-      noPercent: "Percentage unavailable",
+      quotaUnavailableTitle: "Subscription quota unavailable",
+      quotaReasonUnknown: "No reason code was reported for this channel.",
+      quotaResetCredits: "Reset credits",
+      quotaResetCreditsNote: "Window resets the provider granted. Reference only — this plugin never consumes them.",
+      resetCreditsAvailable: "Available",
+      resetCreditsApplicable: "Usable now",
+      quotaReason: {
+        "no-subscription-channel": { title: "No subscription channel found", note: "No Codex sign-in and no matching provider were found on this machine." },
+        "no-verified-quota-source": { title: "No verified quota source", note: "This channel exposes no provider quota window that this plugin can read." },
+        "credential-file-missing": { title: "No Codex sign-in found", note: "auth.json is missing from both CODEX_HOME and the default ~/.codex directory." },
+        "credential-file-unreadable": { title: "Codex credentials unreadable", note: "auth.json exists but could not be read." },
+        "credential-token-missing": { title: "Codex credentials incomplete", note: "auth.json contains no OAuth access token." },
+        "credential-expired": { title: "Codex session expired", note: "Sign in again with the Codex CLI. This plugin never refreshes or rewrites credentials." },
+        "egress-blocked": { title: "Network host not allowed", note: "chatgpt.com is not in this plugin's net.domains list, so no request was sent." },
+        "network-runtime-missing": { title: "Host network API missing", note: "PI-Desktop did not expose pi.net.fetch, so no request was sent." },
+        "network-timeout": { title: "Quota request timed out", note: "The provider did not answer in time. The next refresh will retry." },
+        "network-error": { title: "Quota request failed", note: "The request could not reach the provider. The next refresh will retry." },
+        "provider-unauthorized": { title: "Provider rejected the credentials", note: "The access token is no longer accepted (HTTP 401)." },
+        "provider-forbidden": { title: "Provider denied access", note: "This account may not read usage for this plan (HTTP 403)." },
+        "provider-rate-limited": { title: "Provider rate limited the request", note: "Too many usage requests (HTTP 429). The next refresh will retry." },
+        "provider-response-malformed": { title: "Unreadable quota response", note: "The provider answered with a body this plugin could not parse." },
+        "provider-response-without-window": { title: "No quota window reported", note: "The provider answered but reported no rate-limit window for this account." },
+        "provider-unavailable": { title: "Quota service unavailable", note: "The provider returned a server error. The next refresh will retry." },
+        "provider-http": { title: "Unexpected provider response", note: "The provider returned an unhandled HTTP status." }
+      },
+      credits: "Credits / total allowance",
+      unlimited: "Unlimited",
+      totalAllowance: "Total",
+      usedAmount: "Used",
+      remainingAmount: "Remaining",
+      balance: "Balance",
+      apiUsage: "API / local usage",
+      usageWindow: "Usage window",
+      usageTotal: "Total",
+      usageTotalRetained: "Total (last 90 days)",
       remaining: "remaining",
       used: "used",
       resetAt: "Reset at",
       resetAfter: "Reset in",
       requests: "Requests",
       tokens: "Tokens",
-      estimate: "Estimate",
+      estimate: "API-equivalent estimate",
       noChannels: "No channels in this snapshot",
       unknown: "Unknown",
       partial: (count) => `Up to date · ${count} damaged lines skipped`
@@ -65,20 +98,53 @@
       errorTitle: "无法读取仪表盘",
       errorBody: "面板无法读取插件私有设置。",
       channels: "渠道",
-      channelsSub: (count) => `${count} 个渠道 · 额度窗口由渠道适配器提供`,
+      channelsSub: (count) => `${count} 个渠道 · 真实订阅额度与本地观测使用`,
       account: "账号",
       plan: "计划",
-      quota: "额度",
+      subscriptionQuota: "订阅额度",
       quotaWindow: "额度窗口",
-      quotaUnavailable: "额度接口不可用",
-      noPercent: "百分比不可用",
+      quotaUnavailableTitle: "订阅额度不可用",
+      quotaReasonUnknown: "该渠道未报告具体原因代码。",
+      quotaResetCredits: "重置额度",
+      quotaResetCreditsNote: "服务端授予的窗口重置次数。仅供参考——本插件不会消耗它。",
+      resetCreditsAvailable: "可用次数",
+      resetCreditsApplicable: "当前可用",
+      quotaReason: {
+        "no-subscription-channel": { title: "未发现订阅渠道", note: "本机没有 Codex 登录凭证，也没有匹配的供应商。" },
+        "no-verified-quota-source": { title: "没有可核实的额度来源", note: "该渠道没有本插件可读取的供应商额度窗口。" },
+        "credential-file-missing": { title: "未找到 Codex 登录凭证", note: "CODEX_HOME 和默认的 ~/.codex 目录下都没有 auth.json。" },
+        "credential-file-unreadable": { title: "Codex 凭证无法读取", note: "auth.json 存在但读取失败。" },
+        "credential-token-missing": { title: "Codex 凭证不完整", note: "auth.json 中没有 OAuth 访问令牌。" },
+        "credential-expired": { title: "Codex 登录已过期", note: "请重新用 Codex CLI 登录。本插件不会刷新或改写凭证。" },
+        "egress-blocked": { title: "网络域名未被允许", note: "chatgpt.com 不在本插件的 net.domains 白名单中，因此未发出请求。" },
+        "network-runtime-missing": { title: "宿主网络 API 缺失", note: "PI-Desktop 未提供 pi.net.fetch，因此未发出请求。" },
+        "network-timeout": { title: "额度请求超时", note: "供应商未及时响应，下次刷新会重试。" },
+        "network-error": { title: "额度请求失败", note: "请求无法到达供应商，下次刷新会重试。" },
+        "provider-unauthorized": { title: "供应商拒绝了凭证", note: "访问令牌已不被接受（HTTP 401）。" },
+        "provider-forbidden": { title: "供应商拒绝访问", note: "该账号无权读取此套餐的用量（HTTP 403）。" },
+        "provider-rate-limited": { title: "供应商限流", note: "用量查询过于频繁（HTTP 429），下次刷新会重试。" },
+        "provider-response-malformed": { title: "额度响应无法解析", note: "供应商返回了本插件无法解析的内容。" },
+        "provider-response-without-window": { title: "响应中没有额度窗口", note: "供应商已响应，但未报告该账号的速率限制窗口。" },
+        "provider-unavailable": { title: "额度服务不可用", note: "供应商返回了服务端错误，下次刷新会重试。" },
+        "provider-http": { title: "供应商响应异常", note: "供应商返回了未处理的 HTTP 状态码。" }
+      },
+      credits: "Credits / 总额度",
+      unlimited: "不限量",
+      totalAllowance: "总额",
+      usedAmount: "已用",
+      remainingAmount: "剩余",
+      balance: "余额",
+      apiUsage: "API / 本地使用",
+      usageWindow: "使用窗口",
+      usageTotal: "总计",
+      usageTotalRetained: "总计（近90天）",
       remaining: "剩余",
       used: "已用",
       resetAt: "重置时间",
       resetAfter: "重置倒计时",
       requests: "请求",
       tokens: "Token",
-      estimate: "估算费用",
+      estimate: "API 等价估算",
       noChannels: "此快照没有渠道",
       unknown: "未知",
       partial: (count) => `数据已更新 · 已跳过 ${count} 条损坏记录`
@@ -130,6 +196,10 @@
   function fmt(value) {
     const parsed = numberValue(value);
     return parsed === null ? "" : Math.round(parsed).toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US");
+  }
+  function fmtDecimal(value) {
+    const parsed = numberValue(value);
+    return parsed === null ? "" : parsed.toLocaleString(state.locale === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 4 });
   }
   function fmtCost(value, currency = "USD") {
     const parsed = numberValue(value);
@@ -279,7 +349,9 @@
     const merged = base.map((channel) => {
       const usage = byId.get(String(channel?.id || ""));
       if (!usage) return channel;
-      return { ...channel, requests: usage.requests, tokens: usage.tokens, cost: usage.cost, costCoverage: usage.costCoverage, models: usage.models, modelCount: usage.modelCount, trend: usage.trend, lastActivityAt: usage.lastActivityAt };
+      const mergedChannel = { ...channel, requests: usage.requests, tokens: usage.tokens, cost: usage.cost, costCoverage: usage.costCoverage, models: usage.models, modelCount: usage.modelCount, trend: usage.trend, lastActivityAt: usage.lastActivityAt };
+      if (hasOwn(usage, "usageWindows")) mergedChannel.usageWindows = usage.usageWindows;
+      return mergedChannel;
     });
     const known = new Set(merged.map((channel) => String(channel?.id || "")));
     trend.providers.forEach((provider) => { if (isObject(provider) && !known.has(String(provider.id || ""))) merged.push(provider); });
@@ -303,29 +375,45 @@
     text("stateTitle", t("emptyTitle"));
     text("stateBody", t("emptyBody"));
   }
-
-  function firstArray(values) {
-    for (const value of values) if (Array.isArray(value)) return value;
-    return [];
+  function windowToken(value) {
+    return stringValue(value).toLowerCase().replace(/[\s-]+/g, "_");
   }
-  function quotaData(channel, snapshot) {
-    const directQuota = isObject(channel?.quota) ? channel.quota : null;
-    const globalQuota = isObject(snapshot?.quota) ? snapshot.quota : isObject(snapshot?.provenance?.quota) ? snapshot.provenance.quota : null;
-    const windows = firstArray([
-      channel?.quotaWindows,
-      directQuota?.quotaWindows,
-      directQuota?.windows,
-      channel?.quota?.windows,
-      globalQuota?.quotaWindows,
-      globalQuota?.windows
-    ]).filter(isObject);
-    const explicitlyUnavailable = channel?.quota === false || directQuota?.available === false;
-    const explicitlyAvailable = directQuota?.available === true || channel?.quotaAvailable === true;
-    const globalUnavailable = !directQuota && !windows.length && globalQuota?.available === false;
-    return {
-      available: !explicitlyUnavailable && !globalUnavailable && (explicitlyAvailable || windows.length > 0) && windows.length > 0,
-      windows
-    };
+  function windowKind(window) {
+    if (!isObject(window)) return "";
+    if (window.primary === true || window.short === true) return "short";
+    if (window.secondary === true) return "weekly";
+    if (window.total === true || window.isTotal === true || window.retained === true) return "total";
+    for (const key of ["kind", "type", "windowType", "window", "period", "id", "key", "name", "label", "primary", "secondary", "short", "total"]) {
+      const token = windowToken(window[key]);
+      if (["primary", "short", "primary_window", "short_window", "5h", "5_hour", "5_hours"].includes(token)) return "short";
+      if (["secondary", "weekly", "secondary_window", "weekly_window", "7d", "7_day", "7_days"].includes(token)) return "weekly";
+      if (["total", "overall", "all", "all_time", "retained"].includes(token)) return "total";
+    }
+    return "";
+  }
+  function hasWindowData(window) {
+    if (!isObject(window)) return false;
+    const valueKeys = ["used", "limit", "remaining", "usedPercent", "remainingPercent", "resetAt", "resetAfterSeconds", "resetAfter"];
+    return valueKeys.some((key) => {
+      if (!hasOwn(window, key)) return false;
+      const value = window[key];
+      if (["usedPercent", "remainingPercent"].includes(key)) return percentValue(value) !== null;
+      if (["used", "limit", "remaining", "resetAfterSeconds"].includes(key)) return numberValue(value) !== null;
+      if (["resetAt", "resetAfter"].includes(key)) return numberValue(value) !== null || Boolean(displayValue(value));
+      return Boolean(displayValue(value));
+    });
+  }
+  function quotaData(channel) {
+    const windows = (windowList(channel?.quotaWindows) || [])
+      .filter((window) => hasWindowData(window) && quotaPercent(window) !== null && ["short", "weekly"].includes(windowKind(window)))
+      .sort((left, right) => (windowKind(left) === "short" ? 0 : 1) - (windowKind(right) === "short" ? 0 : 1));
+    return { available: windows.length > 0, windows };
+  }
+  function preferredWindowLabel(window, index, fallbackKey) {
+    const kind = windowKind(window);
+    if (kind === "short") return "5h";
+    if (kind === "weekly") return "Weekly";
+    return displayValue(window?.label) || displayValue(window?.name) || displayValue(window?.id) || `${t(fallbackKey)} ${index + 1}`;
   }
   function percentValue(value) {
     if (value === null || value === undefined || value === "" || typeof value === "boolean") return null;
@@ -386,8 +474,7 @@
     const provider = isObject(channel?.provider) ? channel.provider : null;
     return displayValue(channel?.label) || displayValue(channel?.name) || displayValue(channel?.channel) || displayValue(provider?.label) || displayValue(provider?.name) || displayValue(channel?.id) || displayValue(provider?.id) || t("unknown");
   }
-  function metricValue(channel, keys) {
-    const sources = [channel, channel?.usage, channel?.metrics];
+  function metricValueFromSources(sources, keys) {
     for (const source of sources) {
       if (!isObject(source)) continue;
       for (const key of keys) {
@@ -396,27 +483,36 @@
         const direct = numberValue(raw);
         if (direct !== null) return direct;
         if (key === "tokens" && isObject(raw)) {
-          const total = numberValue(raw.total);
-          if (total !== null) return total;
+          for (const tokenKey of ["total", "value"]) {
+            const total = numberValue(raw[tokenKey]);
+            if (total !== null) return total;
+          }
         }
+      }
+    }
+    return null;
+  }
+  function metricValue(channel, keys) {
+    return metricValueFromSources([channel, channel?.usage, channel?.metrics], keys);
+  }
+  function costValueFromSources(sources) {
+    for (const source of sources) {
+      if (!isObject(source)) continue;
+      for (const key of ["cost", "estimate", "costEstimate", "apiEquivalentCost", "estimatedCost"]) {
+        if (!hasOwn(source, key)) continue;
+        const raw = source[key];
+        const amount = isObject(raw)
+          ? hasOwn(raw, "amount") ? raw.amount : hasOwn(raw, "value") ? raw.value : raw.total
+          : raw;
+        const value = numberValue(amount);
+        if (value !== null) return { amount: value, currency: isObject(raw) ? stringValue(raw.currency) || "USD" : "USD" };
       }
     }
     return null;
   }
   function costValue(channel) {
     if (channel?.capabilities?.cost === false) return null;
-    const sources = [channel, channel?.usage, channel?.metrics];
-    for (const source of sources) {
-      if (!isObject(source)) continue;
-      for (const key of ["cost", "estimate", "costEstimate"]) {
-        if (!hasOwn(source, key)) continue;
-        const raw = source[key];
-        const amount = isObject(raw) ? raw.amount : raw;
-        const value = numberValue(amount);
-        if (value !== null) return { amount: value, currency: isObject(raw) ? raw.currency : "USD" };
-      }
-    }
-    return null;
+    return costValueFromSources([channel, channel?.usage, channel?.metrics]);
   }
   function makeElement(name, className, value) {
     const node = document.createElement(name);
@@ -433,26 +529,24 @@
   function renderQuotaWindow(window, index) {
     const item = makeElement("div", "quota-window");
     const top = makeElement("div", "quota-window-top");
-    const label = displayValue(window.label) || displayValue(window.name) || displayValue(window.id) || `${t("quotaWindow")} ${index + 1}`;
+    const label = preferredWindowLabel(window, index, "quotaWindow");
     top.appendChild(makeElement("span", "quota-label", label));
     const percent = quotaPercent(window);
-    top.appendChild(makeElement("span", percent ? "quota-percent" : "quota-percent missing", percent ? `${percentText(percent.value)} ${t(percent.kind)}` : t("noPercent")));
+    if (percent) top.appendChild(makeElement("span", "quota-percent", `${percentText(percent.value)} ${t(percent.kind)}`));
     item.appendChild(top);
 
-    const progress = makeElement("div", percent ? "quota-progress" : "quota-progress is-empty");
-    progress.setAttribute("role", "progressbar");
-    progress.setAttribute("aria-valuemin", "0");
-    progress.setAttribute("aria-valuemax", "100");
-    progress.setAttribute("aria-label", label);
     if (percent) {
+      const progress = makeElement("div", "quota-progress");
+      progress.setAttribute("role", "progressbar");
+      progress.setAttribute("aria-valuemin", "0");
+      progress.setAttribute("aria-valuemax", "100");
       progress.setAttribute("aria-valuenow", String(percent.value));
+      progress.setAttribute("aria-label", label);
       const fill = makeElement("span", percent.kind === "remaining" ? "quota-progress-fill remaining" : "quota-progress-fill used");
       fill.style.width = `${percent.value}%`;
       progress.appendChild(fill);
-    } else {
-      progress.setAttribute("aria-valuetext", t("noPercent"));
+      item.appendChild(progress);
     }
-    item.appendChild(progress);
 
     const reset = makeElement("div", "quota-reset");
     if (hasOwn(window, "resetAt")) {
@@ -467,7 +561,161 @@
     if (reset.childNodes.length) item.appendChild(reset);
     return item;
   }
-  function renderChannel(channel, snapshot) {
+  function windowList(value) {
+    if (Array.isArray(value)) return value.filter(isObject);
+    if (!isObject(value)) return null;
+    return Object.entries(value).map(([key, row]) => {
+      if (!isObject(row)) return null;
+      return hasOwn(row, "key") ? row : { ...row, key };
+    }).filter(Boolean);
+  }
+  function usageWindowsFor(channel) {
+    return windowList(channel?.usageWindows);
+  }
+  function usageWindowIsRetained90(window) {
+    return windowKind(window) === "total" && numberValue(window.retentionDays) === 90;
+  }
+  function usageWindowLabel(window, index) {
+    const kind = windowKind(window);
+    if (kind === "short") return "5h";
+    if (kind === "weekly") return "Weekly";
+    if (kind === "total") return usageWindowIsRetained90(window) ? t("usageTotalRetained") : t("usageTotal");
+    return displayValue(window?.label) || displayValue(window?.name) || displayValue(window?.id) || `${t("usageWindow")} ${index + 1}`;
+  }
+  function usageWindowRank(window) {
+    const kind = windowKind(window);
+    return kind === "short" ? 0 : kind === "weekly" ? 1 : kind === "total" ? 2 : 3;
+  }
+  function orderedUsageWindows(windows) {
+    return windows.map((window, index) => ({ window, index })).sort((left, right) => usageWindowRank(left.window) - usageWindowRank(right.window) || left.index - right.index).map((entry) => entry.window);
+  }
+  function appendUsageBadge(parent, label, value) {
+    const badge = makeElement("span", "usage-badge");
+    badge.appendChild(makeElement("span", "usage-badge-label", label));
+    badge.appendChild(makeElement("strong", "usage-badge-value", value));
+    parent.appendChild(badge);
+  }
+  function renderUsageWindow(window, index) {
+    const row = makeElement("div", "usage-window");
+    row.appendChild(makeElement("span", "usage-window-label", usageWindowLabel(window, index)));
+    const badges = makeElement("div", "usage-badges");
+    const requests = window?.capabilities?.requests === false ? null : metricValueFromSources([window, window?.usage, window?.metrics], ["requests", "requestCount"]);
+    const tokens = window?.capabilities?.tokens === false ? null : metricValueFromSources([window, window?.usage, window?.metrics], ["tokens", "totalTokens", "tokenCount"]);
+    const cost = window?.capabilities?.cost === false ? null : costValueFromSources([window, window?.usage, window?.metrics]);
+    if (requests !== null) appendUsageBadge(badges, t("requests"), fmt(requests));
+    if (tokens !== null) appendUsageBadge(badges, t("tokens"), fmt(tokens));
+    if (cost) appendUsageBadge(badges, t("estimate"), fmtCost(cost.amount, cost.currency));
+    if (badges.childNodes.length) row.appendChild(badges);
+    return row;
+  }
+  function renderUsageBlock(channel) {
+    const block = makeElement("section", "usage-block");
+    block.appendChild(makeElement("div", "usage-heading", t("apiUsage")));
+    const windows = usageWindowsFor(channel);
+    if (windows !== null) {
+      orderedUsageWindows(windows).forEach((window, index) => block.appendChild(renderUsageWindow(window, index)));
+      return block;
+    }
+
+    const requests = channel?.capabilities?.requests === false ? null : metricValue(channel, ["requests", "requestCount"]);
+    const tokens = channel?.capabilities?.tokens === false ? null : metricValue(channel, ["tokens", "totalTokens", "tokenCount"]);
+    const cost = channel?.capabilities?.cost === false ? null : costValue(channel);
+    if (requests !== null || tokens !== null || cost) {
+      const footer = makeElement("footer", "channel-footer");
+      if (tokens !== null) appendDetail(footer, t("tokens"), fmt(tokens));
+      if (requests !== null) appendDetail(footer, t("requests"), fmt(requests));
+      if (cost) appendDetail(footer, t("estimate"), fmtCost(cost.amount, cost.currency));
+      block.appendChild(footer);
+    }
+    return block;
+  }
+  function renderCreditUsage(value) {
+    if (!isObject(value)) return null;
+    const total = numberValue(value.total);
+    const used = numberValue(value.used);
+    const remaining = numberValue(value.remaining);
+    const remainingPercent = percentValue(value.remainingPercent);
+    const balance = stringValue(value.balance);
+    const unlimited = value.unlimited === true;
+    if (!unlimited && total === null && used === null && remaining === null && remainingPercent === null && !balance) return null;
+
+    const item = makeElement("div", "credit-usage");
+    const top = makeElement("div", "quota-window-top");
+    top.appendChild(makeElement("span", "quota-label", t("credits")));
+    if (remainingPercent !== null) top.appendChild(makeElement("span", "quota-percent", `${percentText(remainingPercent)} ${t("remaining")}`));
+    item.appendChild(top);
+
+    const badges = makeElement("div", "usage-badges credit-badges");
+    if (unlimited) appendUsageBadge(badges, t("remainingAmount"), t("unlimited"));
+    if (total !== null) appendUsageBadge(badges, t("totalAllowance"), fmtDecimal(total));
+    if (used !== null) appendUsageBadge(badges, t("usedAmount"), fmtDecimal(used));
+    if (remaining !== null) appendUsageBadge(badges, t("remainingAmount"), fmtDecimal(remaining));
+    if (balance) appendUsageBadge(badges, t("balance"), balance);
+    if (badges.childNodes.length) item.appendChild(badges);
+
+    if (remainingPercent !== null) {
+      const progress = makeElement("div", "quota-progress");
+      progress.setAttribute("role", "progressbar");
+      progress.setAttribute("aria-valuemin", "0");
+      progress.setAttribute("aria-valuemax", "100");
+      progress.setAttribute("aria-valuenow", String(remainingPercent));
+      progress.setAttribute("aria-label", t("credits"));
+      const fill = makeElement("span", "quota-progress-fill remaining");
+      fill.style.width = `${remainingPercent}%`;
+      progress.appendChild(fill);
+      item.appendChild(progress);
+    }
+
+    const reset = makeElement("div", "quota-reset");
+    if (hasOwn(value, "resetAt")) {
+      const textValue = resetAtText(value.resetAt);
+      if (textValue) appendDetail(reset, t("resetAt"), textValue);
+    }
+    const resetAfter = hasOwn(value, "resetAfterSeconds") ? value.resetAfterSeconds : value.resetAfter;
+    if (resetAfter !== undefined && resetAfter !== null) {
+      const textValue = resetAfterText(resetAfter);
+      if (textValue) appendDetail(reset, t("resetAfter"), textValue);
+    }
+    if (reset.childNodes.length) item.appendChild(reset);
+    return item;
+  }
+
+  function quotaReasonInfo(channel) {
+    const entry = channel?.provenance?.quota;
+    const reason = stringValue(isObject(entry) ? entry.reason : "");
+    const table = t("quotaReason");
+    if (reason && hasOwn(table, reason)) return table[reason];
+    const status = /^provider-http-(\d{3})$/.exec(reason);
+    if (status) return { title: `${table["provider-http"].title} · HTTP ${status[1]}`, note: table["provider-http"].note };
+    return {
+      title: t("quotaUnavailableTitle"),
+      note: reason ? `${t("quotaReasonUnknown")} (${reason})` : t("quotaReasonUnknown")
+    };
+  }
+
+  function renderResetCredits(value) {
+    if (!isObject(value)) return null;
+    const available = numberValue(value.availableCount);
+    const applicable = numberValue(value.applicableCount);
+    if (available === null && applicable === null) return null;
+    const item = makeElement("div", "reset-credits");
+    item.appendChild(makeElement("span", "quota-label", t("quotaResetCredits")));
+    const badges = makeElement("div", "usage-badges credit-badges");
+    if (available !== null) appendUsageBadge(badges, t("resetCreditsAvailable"), fmt(available));
+    if (applicable !== null) appendUsageBadge(badges, t("resetCreditsApplicable"), fmt(applicable));
+    if (badges.childNodes.length) item.appendChild(badges);
+    item.appendChild(makeElement("small", "quota-unavailable-note", t("quotaResetCreditsNote")));
+    return item;
+  }
+
+  function showsSubscriptionQuota(channel, quotaInfo) {
+    if (channel?.subscriptionQuota === true) return true;
+    if (quotaInfo.available || isObject(channel?.creditUsage)) return true;
+    const marker = `${channelName(channel)} ${displayValue(channel?.plan)}`.toLowerCase();
+    return marker.includes("chatgpt") || marker.includes("oauth") || marker.includes("subscription") || marker.includes("订阅");
+  }
+
+  function renderChannel(channel) {
     const article = makeElement("article", "channel-card");
     const quota = isObject(channel?.quota) ? channel.quota : null;
     const header = makeElement("header", "channel-header");
@@ -488,26 +736,26 @@
     if (plan) appendDetail(metadata, t("plan"), plan);
     if (metadata.childNodes.length) article.appendChild(metadata);
 
-    const quotaBlock = makeElement("section", "quota-block");
-    quotaBlock.appendChild(makeElement("div", "quota-heading", t("quota")));
-    const quotaInfo = quotaData(channel, snapshot);
-    if (!quotaInfo.available) {
-      quotaBlock.appendChild(makeElement("div", "quota-unavailable", t("quotaUnavailable")));
-    } else {
-      quotaInfo.windows.forEach((window, index) => quotaBlock.appendChild(renderQuotaWindow(window, index)));
+    const quotaInfo = quotaData(channel);
+    if (showsSubscriptionQuota(channel, quotaInfo)) {
+      const quotaBlock = makeElement("section", "quota-block");
+      quotaBlock.appendChild(makeElement("div", "quota-heading", t("subscriptionQuota")));
+      if (!quotaInfo.available) {
+        const unavailable = makeElement("div", "quota-unavailable");
+        const reason = quotaReasonInfo(channel);
+        unavailable.appendChild(makeElement("div", "quota-unavailable-title", reason.title));
+        unavailable.appendChild(makeElement("small", "quota-unavailable-note", reason.note));
+        quotaBlock.appendChild(unavailable);
+      } else {
+        quotaInfo.windows.forEach((window, index) => quotaBlock.appendChild(renderQuotaWindow(window, index)));
+      }
+      const creditItem = renderCreditUsage(channel.creditUsage);
+      if (creditItem) quotaBlock.appendChild(creditItem);
+      const resetCreditsItem = renderResetCredits(channel.resetCredits);
+      if (resetCreditsItem) quotaBlock.appendChild(resetCreditsItem);
+      article.appendChild(quotaBlock);
     }
-    article.appendChild(quotaBlock);
-
-    const requests = channel?.capabilities?.requests === false ? null : metricValue(channel, ["requests", "requestCount"]);
-    const tokens = channel?.capabilities?.tokens === false ? null : metricValue(channel, ["tokens", "totalTokens", "tokenCount"]);
-    const cost = channel?.capabilities?.cost === false ? null : costValue(channel);
-    if (requests !== null || tokens !== null || cost) {
-      const footer = makeElement("footer", "channel-footer");
-      if (tokens !== null) appendDetail(footer, t("tokens"), fmt(tokens));
-      if (requests !== null) appendDetail(footer, t("requests"), fmt(requests));
-      if (cost) appendDetail(footer, t("estimate"), fmtCost(cost.amount, cost.currency));
-      article.appendChild(footer);
-    }
+    article.appendChild(renderUsageBlock(channel));
     return article;
   }
   function renderChannels() {
@@ -520,7 +768,7 @@
       list.appendChild(makeElement("div", "channels-empty", t("noChannels")));
       return;
     }
-    channels.forEach((channel) => list.appendChild(renderChannel(channel, state.snapshot)));
+    channels.forEach((channel) => list.appendChild(renderChannel(channel)));
   }
 
   function render() {

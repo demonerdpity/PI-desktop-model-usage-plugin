@@ -4,23 +4,23 @@
 
 ## Channel-first cards
 
-The primary interface is a compact provider/channel card list inspired by the Codex page in Cockpit Tools. A card can show an account label, plan, verified quota windows such as `5h` and `Weekly`, used/remaining percentages, and reset time. Requests, tokens, and API-equivalent cost estimates are secondary card metadata.
+Each card has two deliberately separate sections:
 
-Quota fields are never inferred from token history. A channel without a verified provider response says that its quota interface is unavailable; it never receives a synthetic `0%`, `100%`, `5h`, `Weekly`, or reset value.
+- **Subscription quota** accepts only verified provider windows such as `5h` and `Weekly`, with remaining percentage and reset time. Incomplete windows never render. Explicitly identified ChatGPT/OAuth subscription channels explain when secure quota authorization is not connected; ordinary API channels do not show this warning.
+- **API / local usage** reports provider-isolated usage observed in PI-Desktop sessions for a rolling 5-hour window, rolling 7-day `Weekly` window, and the retained total (currently 90 days). It shows requests, tokens, and exact-match API-equivalent cost estimates, but never labels this local subset as provider quota or account billing.
 
-## Codex quota compatibility
+## Cockpit Tools compatibility
 
-`lib/adapters/codex-quota.js` implements a credential-free parser for the successful response shape used by Cockpit Tools at `GET https://chatgpt.com/backend-api/wham/usage`:
+The implementation follows Cockpit Tools' actual distinction rather than treating every channel alike:
 
-- `rate_limit.primary_window` becomes the short/session window;
-- `rate_limit.secondary_window` becomes the weekly window;
-- `used_percent` is retained and the corresponding remaining percentage is derived;
-- `reset_at` or `reset_after_seconds` becomes the reset time;
-- `plan_type` becomes the card plan.
+- ChatGPT Plus/Pro/Codex OAuth subscription quota comes from authenticated `GET https://chatgpt.com/backend-api/wham/usage`. `rate_limit.primary_window` and `secondary_window` provide `used_percent`, duration, and reset fields. The card displays the derived remaining percentage.
+- Optional total allowance comes from `spend_control.individual_limit` or legacy `credits` in the same sanitized response. Only total, used, remaining, remaining percentage, and reset metadata are retained.
+- Ordinary OpenAI-compatible API keys do **not** receive ChatGPT `5h/Weekly` quota rows in Cockpit Tools. Cockpit instead queries provider-specific usage/balance endpoints for New-API, Sub2API, DeepSeek, MiniMax, Zhipu/BigModel/Z.AI, and its own Cockpit API service. Those calls require the corresponding API key.
+- The request/token/cost badges beside Cockpit quota windows are local window statistics, not values returned by ChatGPT's subscription quota endpoint.
 
-The parser deliberately does not perform authentication, retain the raw response, or accept missing windows as 100% remaining. Cockpit Tools can call this private web endpoint because it manages Codex OAuth access and refresh tokens. PI-Desktop currently exposes authenticated model names to plugins through `models.list`, but explicitly does not expose keys, credentials, or an authenticated provider-request proxy. Its own data directory is also protected from plugin file access.
+`lib/adapters/codex-quota.js` implements the credential-free normalization for the successful Codex usage response. It does not perform authentication, retain the raw response, or convert missing windows to 100% remaining.
 
-For that reason this marketplace-safe build does not read Codex `auth.json`, browser cookies, PI-Desktop provider storage, OAuth tokens, or API keys, and it does not request `net.fetch`. Real Codex quota cards can be activated when PI-Desktop provides a host-owned quota API or credential-handle proxy that returns only normalized quota data to the plugin.
+PI-Desktop currently exposes authenticated model display information through `models.list`, but explicitly does not expose keys, credentials, provider usage, subscription quota, or an authenticated provider-request proxy. Its data directory is protected from plugin file access. This marketplace-safe build therefore does not read Codex `auth.json`, browser cookies, PI-Desktop provider storage, OAuth tokens, or API keys, and it does not request `net.fetch`. Live provider quota and account totals require a future host-owned quota/credential proxy that returns only normalized data.
 
 ## Local usage source
 

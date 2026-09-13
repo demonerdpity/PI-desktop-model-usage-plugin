@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Model Usage Dashboard (preview)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="titlebar" id="titlebar">
+    <div class="titlebar-title" id="appTitle"></div>
+    <div class="titlebar-actions" aria-label="Panel actions">
+      <button class="icon-button" id="appearanceButton" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Appearance">◐</button>
+      <button class="icon-button" id="reloadButton" type="button" aria-label="Reload latest data">↻</button>
+    </div>
+    <div class="appearance-menu" id="appearanceMenu" hidden role="dialog" aria-label="Appearance">
+      <div class="menu-label" id="themeLabel"></div>
+      <div class="menu-actions" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="auto" id="themeAuto"></button>
+        <button type="button" data-theme-choice="light" id="themeLight"></button>
+        <button type="button" data-theme-choice="dark" id="themeDark"></button>
+      </div>
+      <div class="menu-label" id="languageLabel"></div>
+      <div class="menu-actions" role="group" aria-label="Language">
+        <button type="button" data-locale-choice="auto" id="localeAuto"></button>
+        <button type="button" data-locale-choice="en" id="localeEnglish">English</button>
+        <button type="button" data-locale-choice="zh" id="localeChinese">中文</button>
+      </div>
+      <p class="menu-note" id="appearanceNote"></p>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-status" id="toolbarStatus" role="status" aria-live="polite"></div>
+    <div class="scan-progress" id="scanProgress" role="progressbar" aria-label="Scan progress" aria-valuemin="0" aria-valuemax="100" hidden><span id="scanProgressFill"></span></div>
+  </div>
+
+  <main class="scroller" id="scroller">
+    <div class="state" id="state" hidden>
+      <h1 id="stateTitle"></h1>
+      <p id="stateBody"></p>
+    </div>
+
+    <div id="dashboard" hidden>
+      <section class="channels-panel" aria-labelledby="channelsTitle">
+        <div class="section-heading">
+          <div>
+            <h1 id="channelsTitle"></h1>
+            <p id="channelsSubtitle"></p>
+          </div>
+        </div>
+        <div class="channel-list" id="channelList"></div>
+      </section>
+    </div>
+  </main>
+  <script src="../lib/aggregate.js"></script>
+  <script src="__preview-data.js"></script>
+  <script src="__preview-bridge.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
