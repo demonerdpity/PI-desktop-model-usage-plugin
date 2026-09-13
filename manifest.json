@@ -4,6 +4,20 @@
   "name": "Model Usage Dashboard",
   "version": "0.2.3",
   "description": "A private, channel-first dashboard for verified provider quota windows and secondary local usage statistics.",
+  "i18n": {
+    "en": {
+      "name": "Model Usage Dashboard",
+      "description": "A private dashboard for provider quota windows and local model usage statistics.",
+      "safetyNotes": "Reads local usage metadata and makes read-only requests only to declared provider domains. Credentials are never persisted or displayed."
+    },
+    "zh-CN": {
+      "name": "模型用量仪表盘",
+      "description": "统一展示订阅额度与本地模型用量统计的隐私优先仪表盘。",
+      "safetyNotes": "读取本地用量元数据，仅向清单声明的服务域名发起只读请求，不持久化或显示凭证。"
+    }
+  },
+  "categories": ["productivity", "analytics"],
+  "changelog": "0.2.3：统一订阅额度与 API/本地用量卡片，修复官方账号重复显示，增加 Codex 登录与主流 provider 网络白名单。",
   "author": "demonerdpity",
   "icon": "assets/icon.png",
   "main": "main.js",
