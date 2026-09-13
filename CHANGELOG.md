@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Published the network permission update in the distributable package, including the ChatGPT quota endpoint and mainstream provider API domains.
+
 ## 0.2.1
 
 - Split cards into strict subscription quota and API/local usage sections.

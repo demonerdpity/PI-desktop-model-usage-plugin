@@ -12,6 +12,20 @@ test("manifest has the independent command, panel size, and only supported permi
   assert.equal(manifest.ui.height, 800);
   assert.equal(manifest.contributes.commands[0].id, "modelUsageDashboard.open");
   assert.deepEqual(manifest.permissions, ["ui.panel", "models.list", "net.fetch"]);
-  assert.deepEqual(manifest.net.domains, ["chatgpt.com"]);
+  assert.deepEqual(manifest.net.domains, [
+    "chatgpt.com",
+    "api.openai.com",
+    "api.anthropic.com",
+    "generativelanguage.googleapis.com",
+    "api.groq.com",
+    "openrouter.ai",
+    "api.deepseek.com",
+    "api.mistral.ai",
+    "api.x.ai",
+    "api.together.xyz",
+    "api.fireworks.ai",
+    "api.cohere.com",
+    "api.perplexity.ai",
+  ]);
   assert.ok(manifest.activationEvents.includes("onStartup"));
 });

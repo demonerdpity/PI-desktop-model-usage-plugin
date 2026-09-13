@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "pi.model-usage-dashboard",
   "name": "Model Usage Dashboard",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A private, channel-first dashboard for verified provider quota windows and secondary local usage statistics.",
   "author": "demonerdpity",
   "icon": "assets/icon.png",
@@ -44,7 +44,23 @@
     "models.list",
     "net.fetch"
   ],
-  "net": { "domains": ["chatgpt.com"] },
+  "net": {
+    "domains": [
+      "chatgpt.com",
+      "api.openai.com",
+      "api.anthropic.com",
+      "generativelanguage.googleapis.com",
+      "api.groq.com",
+      "openrouter.ai",
+      "api.deepseek.com",
+      "api.mistral.ai",
+      "api.x.ai",
+      "api.together.xyz",
+      "api.fireworks.ai",
+      "api.cohere.com",
+      "api.perplexity.ai"
+    ]
+  },
   "engines": {
     "piDesktop": ">=0.2.0"
   },

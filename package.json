@@ -1,6 +1,6 @@
 {
   "name": "pi-model-usage-dashboard",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Channel-first quota and local model usage dashboard for PI-Desktop",
   "main": "main.js",
