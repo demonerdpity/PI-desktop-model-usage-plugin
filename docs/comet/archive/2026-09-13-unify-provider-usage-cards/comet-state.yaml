@@ -2,8 +2,8 @@ schema: comet.native.v4
 name: unify-provider-usage-cards
 language: zh-CN
 phase: archive
-status: active
-state_version: 15
+status: done
+state_version: 16
 brief: brief.md
 shape_confirmation_hash: fc923fa39b1316502270bddce4f738b01cb4bc14830004d58fe97149f3ca3eaa
 spec_changes:
@@ -16,7 +16,7 @@ workspace:
   target_branch: main
   finish: null
 loop:
-  stage: archive-ready
+  stage: done
   goal_cycle: 1
   iteration: 3
   attempt: 2
@@ -25,7 +25,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: archive
+  next_action: null
 acceptance:
   - id: A1
     source: brief.md
@@ -274,5 +274,5 @@ history_overflow:
     recovery: 0
 verification_result: pass
 verification_report: verification.md
-archived: false
+archived: true
 created_at: 2026-09-13T01:03:01.492Z
